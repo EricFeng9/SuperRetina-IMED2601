@@ -243,11 +243,11 @@ def test_on_real():
                     img_m_gray = cv2.cvtColor(img_mov_raw, cv2.COLOR_RGB2GRAY) if img_mov_raw.ndim == 3 else img_mov_raw
                     img_f_gray = cv2.cvtColor(img_fix_raw, cv2.COLOR_RGB2GRAY) if img_fix_raw.ndim == 3 else img_fix_raw
                     reg_img = cv2.warpPerspective(img_m_gray, H_pred, (w_f, h_f))
-                    cv2.imwrite(os.path.join(sample_save_dir, 'registered.png'), reg_img)
-                    cv2.imwrite(os.path.join(sample_save_dir, 'checkerboard.png'), compute_checkerboard(img_f_gray, reg_img))
+                    cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_registered.png'), reg_img)
+                    cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_checkerboard.png'), compute_checkerboard(img_f_gray, reg_img))
             
             draw_matches(img_fix_raw, kps_f_orig, img_mov_raw, kps_m_orig, good_matches, 
-                         os.path.join(sample_save_dir, 'matches.png'))
+                         os.path.join(sample_save_dir, f'{sample_id}_matches.png'))
 
     # Summary
     log_print("\n" + "="*40 + "\nFINAL SUMMARY STATISTICS\n" + "="*40)

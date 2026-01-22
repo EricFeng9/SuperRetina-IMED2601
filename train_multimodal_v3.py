@@ -86,7 +86,7 @@ def draw_matches(img1, kps1, img2, kps2, matches, save_path):
     
     cv2.imwrite(save_path, out_img)
 
-def validate(model, val_loader, device, epoch, save_dir, log_file, train_config, cached_transforms=None):
+def validate(model, val_loader, device, epoch, save_dir, log_file, train_config, val_cache=None):
     """
     验证函数:评估模型在跨模态配准任务上的 MSE 表现
     """
@@ -98,9 +98,9 @@ def validate(model, val_loader, device, epoch, save_dir, log_file, train_config,
     content_thresh = train_config.get('content_thresh', 0.7) # Lowe's Ratio
     geometric_thresh = train_config.get('geometric_thresh', 3.0) # RANSAC re-projection error
     
-    # 缓存变换矩阵
-    if cached_transforms is None:
-        cached_transforms = {}
+    # Initialize cache if needed
+    if val_cache is None:
+        val_cache = []
         is_caching = True
     else:
         is_caching = False
@@ -111,13 +111,39 @@ def validate(model, val_loader, device, epoch, save_dir, log_file, train_config,
     log_f = open(log_file, 'a')
     log_f.write(f'\n--- Validation Epoch {epoch} ---\n')
     
+    # Fill cache if empty (First run logic)
+    if len(val_cache) == 0:
+        print("Initializing Validation Set with Fixed Seed and 10 Samples...")
+        g = torch.Generator()
+        g.manual_seed(2024) # Fixed seed for reproducibility
+        
+        dataset_len = len(val_loader.dataset)
+        indices = torch.randperm(dataset_len, generator=g).tolist()
+        
+        # Take 10 samples or all if less than 10
+        selected_indices = set(indices[:10] if dataset_len >= 10 else indices)
+        
+        # Fetch specific samples
+        for batch_idx, data in enumerate(tqdm(val_loader, desc="Caching Val Data")):
+            if batch_idx in selected_indices:
+                val_cache.append(data)
+                if len(val_cache) >= len(selected_indices):
+                    break
+    
     with torch.no_grad():
-        for batch_idx, data in enumerate(tqdm(val_loader, desc=f"Val Epoch {epoch}")):
+        for data in tqdm(val_cache, desc=f"Val Epoch {epoch}"):
             img0 = data['image0'].to(device)
             img1 = data['image1'].to(device)
             img1_origin = data['image1_origin'].to(device)
             
-            sample_id = f"sample_{batch_idx}"
+            # Extract sample name
+            pair_names = data.get('pair_names', [['sample_unknown']])[0]
+            if isinstance(pair_names, (list, tuple)):
+                sample_name = pair_names[0]
+            else:
+                sample_name = pair_names
+            
+            sample_id = os.path.splitext(os.path.basename(str(sample_name)))[0]
             
             # 提取跨模态特征
             det_fix, desc_fix = model.network(img0)
@@ -215,7 +241,7 @@ def validate(model, val_loader, device, epoch, save_dir, log_file, train_config,
                     for coord in keypoint_coords:
                         cv2.circle(vessel_kps_vis, (int(coord[1]), int(coord[0])), 4, (0, 0, 255), -1)  # 红色点
                     
-                    cv2.imwrite(os.path.join(sample_save_dir, 'vessel_keypoints_extracted.png'), vessel_kps_vis)
+                    cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_vessel_keypoints_extracted.png'), vessel_kps_vis)
                 
                 # 绘制关键点
                 fix_with_kps = cv2.cvtColor(fix_np, cv2.COLOR_GRAY2BGR)
@@ -226,20 +252,20 @@ def validate(model, val_loader, device, epoch, save_dir, log_file, train_config,
                 for kp in kps_mov:
                     cv2.circle(mov_aff_with_kps, (int(kp[0]), int(kp[1])), 3, (0, 255, 0), -1)
 
-                cv2.imwrite(os.path.join(sample_save_dir, 'fixed_kps.png'), fix_with_kps)
-                cv2.imwrite(os.path.join(sample_save_dir, 'affined_moving_kps.png'), mov_aff_with_kps)
-                cv2.imwrite(os.path.join(sample_save_dir, 'registered.png'), img_reg.astype(np.uint8) if img_reg is not None else fix_np)
+                cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_fixed_kps.png'), fix_with_kps)
+                cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_affined_moving_kps.png'), mov_aff_with_kps)
+                cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_registered.png'), img_reg.astype(np.uint8) if img_reg is not None else fix_np)
                 
                 # 绘制匹配关系
                 draw_matches(fix_np, kps_fix.cpu().numpy(), mov_aff_np, kps_mov.cpu().numpy(), good, 
-                             os.path.join(sample_save_dir, 'matches.png'))
+                             os.path.join(sample_save_dir, f'{sample_id}_matches.png'))
 
     avg_mse = np.mean(mse_list) if len(mse_list) > 0 else float('inf')
     log_f.write(f'AVERAGE MSE: {avg_mse:.4f}\n')
     log_f.close()
     
     print(f'Validation Epoch {epoch} Finished. Avg MSE: {avg_mse:.4f}')
-    return avg_mse, cached_transforms
+    return avg_mse, val_cache
 
 def train_multimodal():
     """
@@ -353,8 +379,9 @@ def train_multimodal():
     best_val_mse = float('inf')
 
     # 初始验证
+    val_cache = []
     log_print("Running initial validation...")
-    _, val_transforms_cache = validate(model, val_loader, device, 0, save_root, log_file, train_config, cached_transforms=None)
+    _, val_cache = validate(model, val_loader, device, 0, save_root, log_file, train_config, val_cache=val_cache)
 
     # 训练循环
     for epoch in range(1, num_epochs + 1):
@@ -441,7 +468,7 @@ def train_multimodal():
         
         # 每 5 个 Epoch 进行一次验证并保存模型
         if epoch % 5 == 0:
-            avg_mse, _ = validate(model, val_loader, device, epoch, save_root, log_file, train_config, cached_transforms=val_transforms_cache)
+            avg_mse, _ = validate(model, val_loader, device, epoch, save_root, log_file, train_config, val_cache=val_cache)
             
             state = {
                 'net': model.state_dict(),
