@@ -22,54 +22,7 @@ from common.train_util import value_map_load, value_map_save, affine_images
 from common.common_util import nms, sample_keypoint_desc
 from common.vessel_keypoint_extractor import extract_vessel_keypoints, extract_vessel_keypoints_fallback
 
-def get_vessel_weight_min(epoch):
-    """
-    根据epoch返回课程学习的最小权重
-    
-    阶段0 (0-20): Descriptor Warm-up (仅训练描述子)
-    阶段1 (20-50): min_weight = 0.3  (全局感知期)
-    阶段2 (50-80): min_weight = 0.1  (血管聚焦期)
-    阶段3 (80-100): min_weight = 0.5  (泛化增强期)
-    阶段4 (100+): min_weight = 0.0  (完全泛化期,掩码权重归零)
-    """
-    if epoch <= 20:
-        return 0.3 # 预热期权重不重要，因为不计算检测损失
-    elif epoch < 50:
-        return 0.3
-    elif epoch < 80:
-        return 0.1
-    elif epoch < 100:
-        return 0.5
-    else:
-        return 1.0
 
-def compute_weighted_dice_loss(pred, target, weight):
-    """
-    计算加权 Dice Loss
-    
-    Args:
-        pred: 预测检测图 [B, H, W]
-        target: 目标标签 [B, H, W] 
-        weight: 权重图 [B, H, W]
-    
-    Returns:
-        weighted_dice_loss
-    """
-    smooth = 1e-5
-    
-    # 确保维度一致
-    pred_flat = pred.view(pred.size(0), -1)
-    target_flat = target.view(target.size(0), -1)
-    weight_flat = weight.view(weight.size(0), -1)
-    
-    # 加权交集和并集
-    intersection = (pred_flat * target_flat * weight_flat).sum(dim=1)
-    pred_sum = (pred_flat * pred_flat * weight_flat).sum(dim=1)
-    target_sum = (target_flat * target_flat * weight_flat).sum(dim=1)
-    
-    dice = (2.0 * intersection + smooth) / (pred_sum + target_sum + smooth)
-    
-    return 1.0 - dice.mean()
 
 def draw_matches(img1, kps1, img2, kps2, matches, save_path):
     """
@@ -289,7 +242,6 @@ def train_multimodal():
                         help='Registration mode', default=None)
     parser.add_argument('--epoch', '-e', type=int, help='Number of training epochs', default=500)
     parser.add_argument('--batch_size', '-b', type=int, help='Batch size for training', default=4)
-    parser.add_argument('--vessel_sigma', type=float, help='Vessel weight gaussian sigma', default=6.0)
     args = parser.parse_args()
     
     if args.name:
@@ -335,16 +287,14 @@ def train_multimodal():
         mode=reg_type, 
         split='train', 
         img_size=img_size, 
-        df=df,
-        vessel_sigma=args.vessel_sigma
+        df=df
     )
     val_set = MultiModalDataset(
         root_dir=root_dir, 
         mode=reg_type, 
         split='val', 
         img_size=img_size, 
-        df=df,
-        vessel_sigma=args.vessel_sigma
+        df=df
     )
     
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, num_workers=4)
@@ -388,9 +338,6 @@ def train_multimodal():
 
     # 训练循环
     for epoch in range(1, num_epochs + 1):
-        # 计算当前epoch的血管掩码最小权重
-        vessel_min_weight = get_vessel_weight_min(epoch)
-        
         # 描述子预热期逻辑
         descriptor_only = (epoch <= 20)
         
@@ -398,9 +345,9 @@ def train_multimodal():
         if descriptor_only:
             model.PKE_learn = False
         else:
-            model.PKE_learn = (epoch >= 20) # 强制 PKE 从 20 epoch 开始 (Phase 1)
+            model.PKE_learn = True # 开启 PKE
             
-        log_print(f'Epoch {epoch}/{num_epochs} | PKE_learn: {model.PKE_learn} | Desc_Only: {descriptor_only} | Vessel min_weight: {vessel_min_weight}')
+        log_print(f'Epoch {epoch}/{num_epochs} | PKE_learn: {model.PKE_learn} | Desc_Only: {descriptor_only}')
         model.train()
             
         running_loss_det = 0.0
@@ -410,9 +357,6 @@ def train_multimodal():
         for data in tqdm(train_loader, desc=f"Train Epoch {epoch}"):
             img0 = data['image0'].to(device)
             img1 = data['image1'].to(device)
-            vessel_weight0 = data['vessel_weight0'].to(device)  # [B, 1, H, W]
-            vessel_weight1 = data['vessel_weight1'].to(device)
-            
             # ===== 关键修改：从完整血管分割图中提取稀疏的分叉点 =====
             # 这些分叉点将作为训练时的监督信号，引导模型学习独特的关键点
             vessel_mask_full = data['vessel_mask0']  # [B, 1, H, W]
@@ -433,14 +377,10 @@ def train_multimodal():
                         keypoints = (mask_np > 127).astype(np.float32)
                         print("点位提取失败")
                 vessel_keypoints_batch.append(torch.from_numpy(keypoints).float())
-            
+
             # 转换回 tensor [B, 1, H, W]
             vessel_keypoints = torch.stack(vessel_keypoints_batch, dim=0).unsqueeze(1).to(device)
             
-            # 应用三阶段课程学习的权重调整
-            # W_vessel = clamp(M^vessel, min=vessel_min_weight)
-            vessel_weight0_adjusted = torch.clamp(vessel_weight0, min=vessel_min_weight)
-            vessel_weight1_adjusted = torch.clamp(vessel_weight1, min=vessel_min_weight)
             
             # 准备 PKE 训练所需参数
             batch_size = img0.size(0)
