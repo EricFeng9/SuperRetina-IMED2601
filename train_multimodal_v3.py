@@ -16,7 +16,7 @@ import random
 sys.path.append(os.getcwd())
 
 # 使用新数据集脚本
-from data.student.Fengjunming.SuperRetina.dataset.FIVES_extract_v2.FIVES_extract_v2 import MultiModalDataset
+from dataset.FIVES_extract_v2.FIVES_extract_v2 import MultiModalDataset
 from model.super_retina_multimodal import SuperRetinaMultimodal
 from common.train_util import value_map_load, value_map_save, affine_images
 from common.common_util import nms, sample_keypoint_desc
