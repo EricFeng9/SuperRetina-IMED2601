@@ -24,21 +24,24 @@ from common.vessel_keypoint_extractor import extract_vessel_keypoints, extract_v
 
 def get_vessel_weight_min(epoch):
     """
-    根据epoch返回三阶段课程学习的最小权重
+    根据epoch返回课程学习的最小权重
     
-    阶段1 (0-30): min_weight = 0.3  (全局感知期)
-    阶段2 (30-60): min_weight = 0.1  (血管聚焦期)
-    阶段3 (60-100): min_weight = 0.5  (泛化增强期)
+    阶段0 (0-20): Descriptor Warm-up (仅训练描述子)
+    阶段1 (20-50): min_weight = 0.3  (全局感知期)
+    阶段2 (50-80): min_weight = 0.1  (血管聚焦期)
+    阶段3 (80-100): min_weight = 0.5  (泛化增强期)
     阶段4 (100+): min_weight = 0.0  (完全泛化期,掩码权重归零)
     """
-    if epoch < 30:
+    if epoch <= 20:
+        return 0.3 # 预热期权重不重要，因为不计算检测损失
+    elif epoch < 50:
         return 0.3
-    elif epoch < 60:
+    elif epoch < 80:
         return 0.1
     elif epoch < 100:
         return 0.5
     else:
-        return 0.0
+        return 1.0
 
 def compute_weighted_dice_loss(pred, target, weight):
     """
@@ -388,10 +391,16 @@ def train_multimodal():
         # 计算当前epoch的血管掩码最小权重
         vessel_min_weight = get_vessel_weight_min(epoch)
         
+        # 描述子预热期逻辑
+        descriptor_only = (epoch <= 20)
+        
         # PKE 渐进式学习开关:冷启动后开启
-        model.PKE_learn = (epoch >= pke_start_epoch)
+        if descriptor_only:
+            model.PKE_learn = False
+        else:
+            model.PKE_learn = (epoch >= 20) # 强制 PKE 从 20 epoch 开始 (Phase 1)
             
-        log_print(f'Epoch {epoch}/{num_epochs} | PKE_learn: {model.PKE_learn} | Vessel min_weight: {vessel_min_weight}')
+        log_print(f'Epoch {epoch}/{num_epochs} | PKE_learn: {model.PKE_learn} | Desc_Only: {descriptor_only} | Vessel min_weight: {vessel_min_weight}')
         model.train()
             
         running_loss_det = 0.0
@@ -449,7 +458,7 @@ def train_multimodal():
             with torch.set_grad_enabled(True):
                 # 调用模型 forward 方法，传入关键点掩码（而不是完整血管掩码）作为初始标签
                 loss, number_pts, loss_det_item, loss_desc_item, enhanced_kp, enhanced_label, det_pred, n_det, n_desc = \
-                    model(img0, img1, vessel_keypoints, value_maps, learn_index)
+                    model(img0, img1, vessel_keypoints, value_maps, learn_index, descriptor_only=descriptor_only)
                     
                 loss.backward()
                 optimizer.step()

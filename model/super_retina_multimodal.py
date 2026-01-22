@@ -207,12 +207,13 @@ class SuperRetinaMultimodal(nn.Module):
 
         return loss, True
 
-    def forward(self, fix_img, mov_img, label_point_positions=None, value_map=None, learn_index=None):
+    def forward(self, fix_img, mov_img, label_point_positions=None, value_map=None, learn_index=None, descriptor_only=False):
         """
         主前向传播逻辑
         :param fix_img: 固定图像 (CF)
         :param mov_img: 运动图像 (FA/OCT)，训练时与 fix_img 对齐
         :param label_point_positions: 初始种子点标签
+        :param descriptor_only: 若为True，则仅训练描述子（跳过检测器损失和PKE）
         """
         
         # 1. 提取固定图像（CF 模态）的特征
@@ -222,7 +223,7 @@ class SuperRetinaMultimodal(nn.Module):
         enhanced_label = None
 
         if label_point_positions is not None: # 训练模式
-            if self.PKE_learn:
+            if self.PKE_learn and not descriptor_only:
                 loss_detector_num = len(learn_index[0])
                 loss_descriptor_num = fix_img.shape[0]
             else:
@@ -253,7 +254,7 @@ class SuperRetinaMultimodal(nn.Module):
             # 3. 跨模态渐进式关键点扩充 (PKE)
             # 核心思想：通过几何校验和内容校验，自动发现两模态间可靠的匹配点作为新增标签
             loss_cal = self.dice
-            if len(learn_index[0]) != 0:
+            if len(learn_index[0]) != 0 and not descriptor_only:
                 # pke_learn 内部实现了几何一致性损失 (l_geo) 和 动态标签演化 (l_clf)
                 loss_detector, number_pts, value_map_update, enhanced_label_pts, enhanced_label = \
                     pke_learn(detector_pred_fix[learn_index], descriptor_pred_fix[learn_index],
