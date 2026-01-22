@@ -135,7 +135,7 @@ def sample_keypoint_desc(keypoints, descriptors, s: int = 8):
     keypoints /= torch.tensor([(w * s - 1), (h * s - 1)]).to(keypoints)[None]
     keypoints = keypoints * 2 - 1  # normalize to (-1, 1)
 
-    args = {'align_corners': True} if int(torch.__version__[2]) > 2 else {}
+    args = {'align_corners': True}
     descriptors = torch.nn.functional.grid_sample(
         descriptors, keypoints.view(b, 1, -1, 2), mode='bilinear', **args)
 
