@@ -237,6 +237,7 @@ def train_multimodal():
     parser.add_argument('--mode', '-m', type=str, choices=['cffa', 'cfoct', 'octfa', 'cfocta'], 
                         help='Registration mode', default=None)
     parser.add_argument('--epoch', '-e', type=int, help='Number of training epochs', default=500)
+    parser.add_argument('--batch_size', '-b', type=int, help='Batch size for training', default=4)
     parser.add_argument('--vessel_sigma', type=float, help='Vessel weight gaussian sigma', default=6.0)
     args = parser.parse_args()
     
@@ -246,6 +247,8 @@ def train_multimodal():
         config['DATASET']['registration_type'] = args.mode
     if args.epoch:
         config['MODEL']['num_epoch'] = args.epoch
+    if args.batch_size:
+        config['DATASET']['batch_size'] = args.batch_size
         
     train_config = {**config['MODEL'], **config['PKE'], **config['DATASET'], **config['VALUE_MAP']}
     
