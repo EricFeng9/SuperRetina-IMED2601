@@ -236,7 +236,7 @@ def train_multimodal():
     parser.add_argument('--name', '-n', type=str, help='Experiment name', default=None)
     parser.add_argument('--mode', '-m', type=str, choices=['cffa', 'cfoct', 'octfa', 'cfocta'], 
                         help='Registration mode', default=None)
-    parser.add_argument('--epoch', '-e', type=int, help='Number of training epochs', default=None)
+    parser.add_argument('--epoch', '-e', type=int, help='Number of training epochs', default=500)
     parser.add_argument('--vessel_sigma', type=float, help='Vessel weight gaussian sigma', default=6.0)
     args = parser.parse_args()
     
@@ -309,6 +309,11 @@ def train_multimodal():
         
     value_maps_running = {} if not is_value_map_save else None
     best_mse = float('inf')
+    
+    # 早停机制变量 (仅在epoch >= 100后启用)
+    patience = 5  # 验证损失连续5次不下降则早停
+    patience_counter = 0
+    best_val_mse = float('inf')
 
     # 初始验证
     print("Running initial validation...")
@@ -394,6 +399,20 @@ def train_multimodal():
                 best_dir = os.path.join(save_root, 'bestcheckpoint')
                 os.makedirs(best_dir, exist_ok=True)
                 torch.save(state, os.path.join(best_dir, 'checkpoint.pth'))
+            
+            # 早停机制 (仅在 epoch >= 100 后启用)
+            if epoch >= 100:
+                if avg_mse < best_val_mse:
+                    best_val_mse = avg_mse
+                    patience_counter = 0
+                    print(f'[Early Stopping] Validation MSE improved to {best_val_mse:.4f}. Reset patience counter.')
+                else:
+                    patience_counter += 1
+                    print(f'[Early Stopping] Validation MSE did not improve. Patience: {patience_counter}/{patience}')
+                
+                if patience_counter >= patience:
+                    print(f'Early stopping triggered at epoch {epoch}. Best validation MSE: {best_val_mse:.4f}')
+                    break
 
 if __name__ == '__main__':
     train_multimodal()
