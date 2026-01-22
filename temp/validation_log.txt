@@ -1,0 +1,43 @@
+
+--- Validation Epoch 0 ---
+
+--- Validation Epoch 0 ---
+
+--- Validation Epoch 0 ---
+AVERAGE MSE: 5433.1699
+
+--- Validation Epoch 0 ---
+AVERAGE MSE: 6683.2285
+
+--- Validation Epoch 5 ---
+AVERAGE MSE: 9062.2511
+
+--- Validation Epoch 10 ---
+AVERAGE MSE: 9318.4123
+
+--- Validation Epoch 15 ---
+AVERAGE MSE: 10100.1180
+
+--- Validation Epoch 20 ---
+AVERAGE MSE: 9706.5793
+
+--- Validation Epoch 25 ---
+AVERAGE MSE: 10000.0000
+
+--- Validation Epoch 30 ---
+AVERAGE MSE: 10000.0000
+
+--- Validation Epoch 35 ---
+AVERAGE MSE: 10000.0000
+
+--- Validation Epoch 40 ---
+AVERAGE MSE: 10000.0000
+
+--- Validation Epoch 45 ---
+AVERAGE MSE: 10000.0000
+
+--- Validation Epoch 50 ---
+AVERAGE MSE: 9707.6052
+
+--- Validation Epoch 55 ---
+AVERAGE MSE: 10000.0000

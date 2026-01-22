@@ -20,6 +20,7 @@ from dataset.FIVES_extract_v2.FIVES_extract_v2 import MultiModalDataset
 from model.super_retina_multimodal import SuperRetinaMultimodal
 from common.train_util import value_map_load, value_map_save, affine_images
 from common.common_util import nms, sample_keypoint_desc
+from common.vessel_keypoint_extractor import extract_vessel_keypoints, extract_vessel_keypoints_fallback
 
 def get_vessel_weight_min(epoch):
     """
@@ -195,6 +196,27 @@ def validate(model, val_loader, device, epoch, save_dir, log_file, train_config,
                 mov_in_np = (img1_origin[b, 0].cpu().numpy() * 255).astype(np.uint8)
                 mov_aff_np = (img1[b, 0].cpu().numpy() * 255).astype(np.uint8)
                 
+                # ===== 新增：可视化从血管分割图中提取的关键点 =====
+                if 'vessel_mask0' in data:
+                    vessel_mask_np = (data['vessel_mask0'][b, 0].cpu().numpy() * 255).astype(np.uint8)
+                    
+                    # 提取关键点
+                    try:
+                        vessel_keypoints_np = extract_vessel_keypoints(vessel_mask_np, min_distance=8)
+                    except:
+                        try:
+                            vessel_keypoints_np = extract_vessel_keypoints_fallback(vessel_mask_np, min_distance=8)
+                        except:
+                            vessel_keypoints_np = (vessel_mask_np > 127).astype(np.float32)
+                    
+                    # 在原图上绘制提取的关键点
+                    vessel_kps_vis = cv2.cvtColor(fix_np, cv2.COLOR_GRAY2BGR)
+                    keypoint_coords = np.column_stack(np.where(vessel_keypoints_np > 0.5))
+                    for coord in keypoint_coords:
+                        cv2.circle(vessel_kps_vis, (int(coord[1]), int(coord[0])), 4, (0, 0, 255), -1)  # 红色点
+                    
+                    cv2.imwrite(os.path.join(sample_save_dir, 'vessel_keypoints_extracted.png'), vessel_kps_vis)
+                
                 # 绘制关键点
                 fix_with_kps = cv2.cvtColor(fix_np, cv2.COLOR_GRAY2BGR)
                 for kp in kps_fix:
@@ -258,8 +280,20 @@ def train_multimodal():
     os.makedirs(save_root, exist_ok=True)
     
     log_file = os.path.join(save_root, 'validation_log.txt')
+    train_log_file = os.path.join(save_root, 'train_log.txt')  # 新增：训练日志
+    
     device = torch.device(train_config['device'] if torch.cuda.is_available() else "cpu")
-    print(f"Using device: {device} | Experiment: {exp_name}")
+    
+    # 打开训练日志文件
+    train_log = open(train_log_file, 'a', buffering=1)  # 行缓冲，实时写入
+    
+    def log_print(msg):
+        """同时输出到控制台和日志文件"""
+        print(msg)
+        train_log.write(msg + '\n')
+        train_log.flush()
+    
+    log_print(f"Using device: {device} | Experiment: {exp_name}")
 
     # 数据加载 - 使用新的FIVES数据集
     root_dir = train_config['root_dir']
@@ -293,7 +327,7 @@ def train_multimodal():
     if train_config['load_pre_trained_model']:
         path = train_config['pretrained_path']
         if os.path.exists(path):
-            print(f"Loading pretrained model from {path}")
+            log_print(f"Loading pretrained model from {path}")
             checkpoint = torch.load(path, map_location=device)
             model.load_state_dict(checkpoint['net'])
             
@@ -319,7 +353,7 @@ def train_multimodal():
     best_val_mse = float('inf')
 
     # 初始验证
-    print("Running initial validation...")
+    log_print("Running initial validation...")
     _, val_transforms_cache = validate(model, val_loader, device, 0, save_root, log_file, train_config, cached_transforms=None)
 
     # 训练循环
@@ -330,7 +364,7 @@ def train_multimodal():
         # PKE 渐进式学习开关:冷启动后开启
         model.PKE_learn = (epoch >= pke_start_epoch)
             
-        print(f'Epoch {epoch}/{num_epochs} | PKE_learn: {model.PKE_learn} | Vessel min_weight: {vessel_min_weight}')
+        log_print(f'Epoch {epoch}/{num_epochs} | PKE_learn: {model.PKE_learn} | Vessel min_weight: {vessel_min_weight}')
         model.train()
             
         running_loss_det = 0.0
@@ -342,6 +376,30 @@ def train_multimodal():
             img1 = data['image1'].to(device)
             vessel_weight0 = data['vessel_weight0'].to(device)  # [B, 1, H, W]
             vessel_weight1 = data['vessel_weight1'].to(device)
+            
+            # ===== 关键修改：从完整血管分割图中提取稀疏的分叉点 =====
+            # 这些分叉点将作为训练时的监督信号，引导模型学习独特的关键点
+            vessel_mask_full = data['vessel_mask0']  # [B, 1, H, W]
+            vessel_keypoints_batch = []
+            
+            for b in range(vessel_mask_full.shape[0]):
+                # 转换为 numpy 格式 (H, W)
+                mask_np = (vessel_mask_full[b, 0].cpu().numpy() * 255).astype(np.uint8)
+                
+                # 提取关键点
+                try:
+                    keypoints = extract_vessel_keypoints(mask_np, min_distance=8)
+                except:
+                    try:
+                        keypoints = extract_vessel_keypoints_fallback(mask_np, min_distance=8)
+                    except:
+                        # 如果提取失败，使用原始掩码（但这会导致之前的问题）
+                        keypoints = (mask_np > 127).astype(np.float32)
+                        print("点位提取失败")
+                vessel_keypoints_batch.append(torch.from_numpy(keypoints).float())
+            
+            # 转换回 tensor [B, 1, H, W]
+            vessel_keypoints = torch.stack(vessel_keypoints_batch, dim=0).unsqueeze(1).to(device)
             
             # 应用三阶段课程学习的权重调整
             # W_vessel = clamp(M^vessel, min=vessel_min_weight)
@@ -362,9 +420,9 @@ def train_multimodal():
             optimizer.zero_grad()
             
             with torch.set_grad_enabled(True):
-                # 调用模型 forward 方法，传入血管掩码作为初始标签，并启用 PKE 学习
+                # 调用模型 forward 方法，传入关键点掩码（而不是完整血管掩码）作为初始标签
                 loss, number_pts, loss_det_item, loss_desc_item, enhanced_kp, enhanced_label, det_pred, n_det, n_desc = \
-                    model(img0, img1, data['vessel_mask0'].to(device), value_maps, learn_index)
+                    model(img0, img1, vessel_keypoints, value_maps, learn_index)
                     
                 loss.backward()
                 optimizer.step()
@@ -379,7 +437,7 @@ def train_multimodal():
             total_samples += img0.size(0)
 
         epoch_loss = (running_loss_det + running_loss_desc) / total_samples
-        print(f'Train Total Loss: {epoch_loss:.4f} (Det: {running_loss_det/total_samples:.4f}, Desc: {running_loss_desc/total_samples:.4f})')
+        log_print(f'Train Total Loss: {epoch_loss:.4f} (Det: {running_loss_det/total_samples:.4f}, Desc: {running_loss_desc/total_samples:.4f})')
         
         # 每 5 个 Epoch 进行一次验证并保存模型
         if epoch % 5 == 0:
@@ -396,28 +454,37 @@ def train_multimodal():
             latest_dir = os.path.join(save_root, 'latestpoint')
             os.makedirs(latest_dir, exist_ok=True)
             torch.save(state, os.path.join(latest_dir, 'checkpoint.pth'))
+            # 保存epoch信息
+            with open(os.path.join(latest_dir, 'checkpoint_info.txt'), 'w') as f:
+                f.write(f'Latest Checkpoint\nEpoch: {epoch}\nMSE: {avg_mse:.4f}\n')
             
             # 保存 MSE 表现最好的模型
             if avg_mse < best_mse:
-                print(f"New Best MSE: {avg_mse:.4f} (Previous: {best_mse:.4f})")
+                log_print(f"New Best MSE: {avg_mse:.4f} (Previous: {best_mse:.4f})")
                 best_mse = avg_mse
                 best_dir = os.path.join(save_root, 'bestcheckpoint')
                 os.makedirs(best_dir, exist_ok=True)
                 torch.save(state, os.path.join(best_dir, 'checkpoint.pth'))
+                # 保存epoch信息
+                with open(os.path.join(best_dir, 'checkpoint_info.txt'), 'w') as f:
+                    f.write(f'Best Checkpoint\nEpoch: {epoch}\nMSE: {avg_mse:.4f}\n')
             
             # 早停机制 (仅在 epoch >= 100 后启用)
             if epoch >= 100:
                 if avg_mse < best_val_mse:
                     best_val_mse = avg_mse
                     patience_counter = 0
-                    print(f'[Early Stopping] Validation MSE improved to {best_val_mse:.4f}. Reset patience counter.')
+                    log_print(f'[Early Stopping] Validation MSE improved to {best_val_mse:.4f}. Reset patience counter.')
                 else:
                     patience_counter += 1
-                    print(f'[Early Stopping] Validation MSE did not improve. Patience: {patience_counter}/{patience}')
+                    log_print(f'[Early Stopping] Validation MSE did not improve. Patience: {patience_counter}/{patience}')
                 
                 if patience_counter >= patience:
-                    print(f'Early stopping triggered at epoch {epoch}. Best validation MSE: {best_val_mse:.4f}')
+                    log_print(f'Early stopping triggered at epoch {epoch}. Best validation MSE: {best_val_mse:.4f}')
                     break
+    
+    # 训练结束，关闭日志文件
+    train_log.close()
 
 if __name__ == '__main__':
     train_multimodal()

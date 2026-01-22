@@ -262,7 +262,7 @@ class MultiModalDataset(Dataset):
                 'image1_origin': torch.from_numpy(img1_origin).float()[None] / 255.0, # 原始移动图
                 'mask0': torch.from_numpy(valid_mask0_orig).float()[None],  # [1, H, W] 有效区域掩码
                 'mask1': torch.from_numpy(valid_mask1_warped).float()[None],
-                'vessel_mask0': torch.from_numpy(vessel_mask_bin).float()[None],  # [1, H, W] 二值血管掩码
+                'vessel_mask0': torch.from_numpy(vessel_mask_bin).float()[None],  # [1, H, W] 完整血管分割图
                 'vessel_mask1': torch.from_numpy(mask1_warped).float()[None],
                 'vessel_weight0': torch.from_numpy(vessel_weight0).float()[None],  # [1, H, W] 高斯软掩码 (固定图)
                 'vessel_weight1': torch.from_numpy(weight1_warped).float()[None],  # [1, H, W] 高斯软掩码 (变换后)
