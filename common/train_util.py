@@ -17,11 +17,16 @@ import matplotlib.pyplot as plt
 
 def affine_images(images, used_for='detector'):
     """
-    Perform affine transformation on images
-    :param images: (B, C, H, W)
-    :param keypoint_labels: corresponding labels
-    :param value_map: value maps, used to record history learned geo_points
-    :return: results of affine images, affine labels, affine value maps, affine transformed grid_inverse, inverse transformed grid_inverse
+    对图像进行随机仿射变换，用于模拟多模态配准中的空间偏移。
+    
+    参数:
+    - images: 输入图像张量 (B, C, H, W)
+    - used_for: 变换用途，'detector' 表示检测器训练（大尺度变换），'descriptor' 表示描述子训练（微小变换）
+    
+    返回:
+    - output: 变换后的图像
+    - grid: 前向变换网格
+    - grid_inverse: 逆向变换网格（用于将变换后的坐标映射回原始坐标）
     """
 
     h, w = images.shape[2:]
@@ -30,19 +35,25 @@ def affine_images(images, used_for='detector'):
 
     for i in range(len(images)):
         if used_for == 'detector':
-            affine_params = T.RandomAffine(20).get_params(degrees=[-15, 15], translate=[0.2, 0.2],
-                                                          scale_ranges=[0.9, 1.35],
+            # 按照训练计划：旋转 [-30, 30] 度，平移 [0.1, 0.2] 的比例
+            # scale_ranges 用于增强尺度不变性
+            affine_params = T.RandomAffine(20).get_params(degrees=[-30, 30], translate=[0.2, 0.2],
+                                                          scale_ranges=[0.8, 1.2],
                                                           shears=None, img_size=[h, w])
         else:
+            # 描述子训练时使用微小变换，以学习精细特征
             affine_params = T.RandomAffine(20).get_params(degrees=[-3, 3], translate=[0.1, 0.1],
                                                           scale_ranges=[0.9, 1.1],
                                                           shears=None, img_size=[h, w])
         angle = -affine_params[0] * math.pi / 180
+        # 构造仿射变换矩阵
         theta_ = torch.tensor([
             [1 / affine_params[2] * math.cos(angle), math.sin(-angle), -affine_params[1][0] / images.shape[2]],
             [math.sin(angle), 1 / affine_params[2] * math.cos(angle), -affine_params[1][1] / images.shape[3]],
             [0, 0, 1]
         ], dtype=torch.float).to(images)
+        
+        # 计算逆变换矩阵，用于 PKE 阶段的几何校验
         thetaI_ = theta_.inverse()
         theta_ = theta_[:2]
         thetaI_ = thetaI_[:2]
@@ -58,12 +69,14 @@ def affine_images(images, used_for='detector'):
         else:
             thetaI = torch.cat((thetaI, thetaI_))
 
+    # 生成变换网格并应用
     grid = F.affine_grid(theta, images.size(), align_corners=True)
     grid = grid.to(images)
     grid_inverse = F.affine_grid(thetaI, images.size(), align_corners=True)
     grid_inverse = grid_inverse.to(images)
     output = F.grid_sample(images, grid, align_corners=True)
 
+    # 对描述子训练分支应用额外的色彩扰动（模拟跨模态光照差异，尽管跨模态更多是结构差异）
     if used_for == 'descriptor':
         if random.random() >= 0.4:
             output = output.repeat(1, 3, 1, 1)
