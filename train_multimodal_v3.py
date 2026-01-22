@@ -264,7 +264,7 @@ def train_multimodal():
     # 数据加载 - 使用新的FIVES数据集
     root_dir = train_config['root_dir']
     batch_size = train_config['batch_size']
-    img_size = train_config.get('img_size', 518)
+    img_size = train_config.get('img_size', 512)
     df = train_config.get('df', 8)
     
     train_set = MultiModalDataset(
@@ -348,29 +348,31 @@ def train_multimodal():
             vessel_weight0_adjusted = torch.clamp(vessel_weight0, min=vessel_min_weight)
             vessel_weight1_adjusted = torch.clamp(vessel_weight1, min=vessel_min_weight)
             
+            # 准备 PKE 训练所需参数
+            batch_size = img0.size(0)
+            input_with_labels = torch.ones(batch_size, dtype=torch.bool).to(device)
+            learn_index = torch.where(input_with_labels)
+            
+            # 加载动态 Value Maps (记录每个像素点的历史置信度)
+            names = data['pair_names'][0] # 使用固定图名称作为 key
+            value_maps = value_map_load(value_map_save_dir, names, input_with_labels, 
+                                      img0.shape[-2:], value_maps_running)
+            value_maps = value_maps.to(device)
+            
             optimizer.zero_grad()
             
             with torch.set_grad_enabled(True):
-                # 前向传播
-                det0, desc0 = model.network(img0)
-                det1, desc1 = model.network(img1)
-                
-                # 这里需要根据实际的SuperRetinaMultimodal接口调整
-                # 假设模型返回检测图和描述子,我们需要计算加权损失
-                # 注意:这是简化版本,实际需要根据model的forward方法调整
-                
-                # 示例:计算加权检测损失
-                # loss_det = compute_weighted_dice_loss(det0, target_label, vessel_weight0_adjusted)
-                
-                # 实际应该调用模型的forward方法,这里仅作示意
-                # 需要将vessel_weight传入模型或在此处计算损失
-                
-                # 临时使用原始接口(需要根据实际情况修改)
+                # 调用模型 forward 方法，传入血管掩码作为初始标签，并启用 PKE 学习
                 loss, number_pts, loss_det_item, loss_desc_item, enhanced_kp, enhanced_label, det_pred, n_det, n_desc = \
-                    model(img0, img1, None, None, None)  # 这里需要适配新数据格式
+                    model(img0, img1, data['vessel_mask0'].to(device), value_maps, learn_index)
                     
                 loss.backward()
                 optimizer.step()
+                
+            # 更新持久化的 Value Maps
+            if len(learn_index[0]) > 0:
+                value_maps = value_maps.cpu()
+                value_map_save(value_map_save_dir, names, input_with_labels, value_maps, value_maps_running)
                     
             running_loss_det += loss_det_item
             running_loss_desc += loss_desc_item

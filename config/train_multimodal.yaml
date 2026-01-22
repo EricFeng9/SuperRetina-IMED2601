@@ -16,7 +16,7 @@ MODEL:
 DATASET:
   model_image_width: 768
   model_image_height: 768
-  root_dir: /data/student/Fengjunming/FractMorph/dataset/CF_251112_gen
+  root_dir: /data/student/Fengjunming/SuperRetina/dataset/FIVES_extract_v2
   registration_type: cffa
 
 PKE:
