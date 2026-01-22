@@ -68,6 +68,8 @@ def test_on_real():
     parser.add_argument('-latestcheckpoint', action='store_true', help='Use latest checkpoint')
     parser.add_argument('--mode', type=str, choices=['cffa', 'cfoct', 'octfa', 'cfocta'], default='cffa', help='Evaluation mode')
     parser.add_argument('--split', type=str, default='test', choices=['train', 'val', 'test'], help='Dataset split')
+    parser.add_argument('--geometric_thresh', '-g', type=float, help='RANSAC geometric threshold', default=0.7)
+    parser.add_argument('--content_thresh', '-c', type=float, help='Lowe ratio threshold for feature matching', default=0.8)
     args = parser.parse_args()
 
     exp_name, mode = args.name, args.mode
@@ -99,6 +101,14 @@ def test_on_real():
     else:
         with open(config_path) as f: config = yaml.safe_load(f)
         model_config = {**config['MODEL'], **config['PKE'], **config['DATASET'], **config['VALUE_MAP']}
+    
+    # Override config with command-line arguments if provided
+    if args.geometric_thresh is not None:
+        model_config['geometric_thresh'] = args.geometric_thresh
+        log_print(f"Overriding geometric_thresh: {args.geometric_thresh}")
+    if args.content_thresh is not None:
+        model_config['content_thresh'] = args.content_thresh
+        log_print(f"Overriding content_thresh: {args.content_thresh}")
 
     # Initialize dataset
     if mode == 'cfocta':

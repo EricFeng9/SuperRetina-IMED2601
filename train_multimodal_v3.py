@@ -242,6 +242,8 @@ def train_multimodal():
                         help='Registration mode', default=None)
     parser.add_argument('--epoch', '-e', type=int, help='Number of training epochs', default=500)
     parser.add_argument('--batch_size', '-b', type=int, help='Batch size for training', default=4)
+    parser.add_argument('--geometric_thresh', '-g', type=float, help='RANSAC geometric threshold for PKE', default=0.7)
+    parser.add_argument('--content_thresh', '-c', type=float, help='Lowe ratio threshold for feature matching', default=0.8)
     args = parser.parse_args()
     
     if args.name:
@@ -252,6 +254,10 @@ def train_multimodal():
         config['MODEL']['num_epoch'] = args.epoch
     if args.batch_size:
         config['DATASET']['batch_size'] = args.batch_size
+    if args.geometric_thresh is not None:
+        config['PKE']['geometric_thresh'] = args.geometric_thresh
+    if args.content_thresh is not None:
+        config['PKE']['content_thresh'] = args.content_thresh
         
     train_config = {**config['MODEL'], **config['PKE'], **config['DATASET'], **config['VALUE_MAP']}
     
