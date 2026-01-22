@@ -22,7 +22,8 @@ DATASET:
 PKE:
   pke_start_epoch: 10
   geometric_thresh: 0.7 #3.0 ->0.7
-  content_thresh: 0.8 #越小matches匹配的越严格 0.5->0.8
+  #content_thresh: 0.8 #越小matches匹配的越严格 0.5->0.8
+  content_thresh: 1.0
   gaussian_kernel_size: 21
   gaussian_sigma: 3
 
