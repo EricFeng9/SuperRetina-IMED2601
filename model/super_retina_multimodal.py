@@ -207,13 +207,14 @@ class SuperRetinaMultimodal(nn.Module):
 
         return loss, True
 
-    def forward(self, fix_img, mov_img, label_point_positions=None, value_map=None, learn_index=None, descriptor_only=False):
+    def forward(self, fix_img, mov_img, label_point_positions=None, value_map=None, learn_index=None, descriptor_only=False, vessel_mask=None):
         """
         主前向传播逻辑
         :param fix_img: 固定图像 (CF)
         :param mov_img: 运动图像 (FA/OCT)，训练时与 fix_img 对齐
         :param label_point_positions: 初始种子点标签
         :param descriptor_only: 若为True，则仅训练描述子（跳过检测器损失和PKE）
+        :param vessel_mask: 固定图像的血管分割图 [B, 1, H, W]，用于PKE候选点过滤
         """
         
         # 1. 提取固定图像（CF 模态）的特征
@@ -261,7 +262,7 @@ class SuperRetinaMultimodal(nn.Module):
                               grid_inverse[learn_index], detector_pred_mov_aug[learn_index],
                               descriptor_pred_mov_aug[learn_index], self.kernel, loss_cal,
                               label_point_positions[learn_index], value_map[learn_index],
-                              self.config, self.PKE_learn)
+                              self.config, self.PKE_learn, vessel_mask=vessel_mask[learn_index] if vessel_mask is not None else None)
 
             # 辅助可视化
             if enhanced_label_pts is not None:

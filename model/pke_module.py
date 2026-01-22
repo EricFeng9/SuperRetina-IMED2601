@@ -92,9 +92,10 @@ def geometric_filter(affine_detector_pred, points, affine_points, max_num=1024, 
 
 def pke_learn(detector_pred, descriptor_pred, grid_inverse, affine_detector_pred,
               affine_descriptor_pred, kernel, loss_cal, label_point_positions,
-              value_map, config, PKE_learn=True):
+              value_map, config, PKE_learn=True, vessel_mask=None):
     """
     渐进式关键点扩充 (Progressive Keypoint Expansion, PKE) 核心逻辑
+    :param vessel_mask: [B, 1, H, W] 血管分割图，用于过滤候选点
     """
     # 初始种子点标签（由 PBO 提取的血管分叉点等）
     initial_label = F.conv2d(label_point_positions, kernel,
@@ -119,6 +120,33 @@ def pke_learn(detector_pred, descriptor_pred, grid_inverse, affine_detector_pred
         # 在固定图像检测图上进行 NMS 提取候选点（排除掉初始标签已覆盖的区域）
         points = nms(detector_pred, nms_thresh=nms_thresh, nms_size=nms_size,
                      detector_label=initial_label, mask=True)
+
+        # ===== 新增：利用血管 Mask 过滤候选点 =====
+        # 仅保留落在血管上的点作为候选，抑制背景噪声
+        if vessel_mask is not None:
+            filtered_points = []
+            for s, k in enumerate(points):
+                if len(k) == 0:
+                    filtered_points.append(k)
+                    continue
+                    
+                # 获取点坐标 [N, 2] (x, y)
+                x_coords = k[:, 0].long()
+                y_coords = k[:, 1].long()
+                
+                # 检查 mask 值 (注意 mask 形状是 [1, H, W])
+                # 确保坐标在范围内
+                valid_indices = (x_coords >= 0) & (x_coords < w) & (y_coords >= 0) & (y_coords < h)
+                x_coords = x_coords[valid_indices]
+                y_coords = y_coords[valid_indices]
+                current_k = k[valid_indices]
+                
+                # 采样 mask 值 (假设 mask > 0.05 即为血管)
+                mask_vals = vessel_mask[s, 0, y_coords, x_coords]
+                is_vessel = mask_vals > 0.05
+                
+                filtered_points.append(current_k[is_vessel])
+            points = filtered_points
 
         # 1. 几何校验：跨模态重现性
         points, affine_points = mapping_points(grid_inverse, points, h, w)

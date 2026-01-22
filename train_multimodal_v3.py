@@ -403,8 +403,9 @@ def train_multimodal():
             
             with torch.set_grad_enabled(True):
                 # 调用模型 forward 方法，传入关键点掩码（而不是完整血管掩码）作为初始标签
+                # 同时传入完整血管掩码 vessel_mask_full 用于 PKE 候选点过滤
                 loss, number_pts, loss_det_item, loss_desc_item, enhanced_kp, enhanced_label, det_pred, n_det, n_desc = \
-                    model(img0, img1, vessel_keypoints, value_maps, learn_index, descriptor_only=descriptor_only)
+                    model(img0, img1, vessel_keypoints, value_maps, learn_index, descriptor_only=descriptor_only, vessel_mask=vessel_mask_full)
                     
                 loss.backward()
                 optimizer.step()

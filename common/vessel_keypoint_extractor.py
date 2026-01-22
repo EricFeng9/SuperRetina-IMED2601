@@ -31,11 +31,11 @@ def extract_vessel_keypoints(vessel_mask, min_distance=5):
     # 分叉点：有 3 个或更多邻居的骨架点
     junction_points = (neighbor_count >= 3) & (skeleton == 1)
     
-    # 端点：只有 1 个邻居的骨架点（血管末端）
-    endpoint_points = (neighbor_count == 1) & (skeleton == 1)
+    # 端点：只有 1 个邻居的骨架点（血管末端） - 已移除
+    # endpoint_points = (neighbor_count == 1) & (skeleton == 1)
     
-    # 合并分叉点和端点
-    keypoints = junction_points | endpoint_points
+    # 仅保留分叉点
+    keypoints = junction_points
     
     # 3. 非极大值抑制：去除距离过近的重复点
     keypoint_coords = np.column_stack(np.where(keypoints))
@@ -95,9 +95,9 @@ def extract_vessel_keypoints_fallback(vessel_mask, min_distance=5):
     neighbor_count = cv2.filter2D(skeleton, -1, kernel)
     
     junction_points = (neighbor_count >= 3) & (skeleton == 1)
-    endpoint_points = (neighbor_count == 1) & (skeleton == 1)
+    # endpoint_points = (neighbor_count == 1) & (skeleton == 1)
     
-    keypoints = junction_points | endpoint_points
+    keypoints = junction_points
     
     # NMS
     keypoint_coords = np.column_stack(np.where(keypoints))
