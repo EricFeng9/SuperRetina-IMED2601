@@ -27,7 +27,7 @@ from common.vessel_keypoint_extractor import extract_vessel_keypoints, extract_v
 
 def apply_random_augmentation(img, keypoints=None):
     """
-    Apply random Gamma, Contrast, and Brightness augmentation.
+    Apply random Gamma, Contrast, and Brightness augmentation with high intensity.
     Args:
         img: Tensor [B, C, H, W], range [0, 1]
     Returns:
@@ -37,22 +37,22 @@ def apply_random_augmentation(img, keypoints=None):
     device = img.device
     
     # 1. Random Gamma
-    # Gamma range: [0.7, 1.5]
-    if random.random() < 0.5: # 50% chance
-        gamma = random.uniform(0.7, 1.5)
+    # Widened Gamma range: [0.4, 3.0]
+    if random.random() < 0.8: # Increased chance to 80%
+        gamma = random.uniform(0.4, 3.0)
         img = img.pow(gamma)
         
     # 2. Random Contrast
-    # Factor range: [0.7, 1.3]
-    if random.random() < 0.5:
-        contrast_factor = random.uniform(0.7, 1.3)
+    # Widened Factor range: [0.3, 2.0]
+    if random.random() < 0.8:
+        contrast_factor = random.uniform(0.3, 2.0)
         mean = img.mean(dim=(2, 3), keepdim=True)
         img = (img - mean) * contrast_factor + mean
         
     # 3. Random Brightness
-    # Offset range: [-0.1, 0.1]
-    if random.random() < 0.5:
-        brightness_offset = random.uniform(-0.1, 0.1)
+    # Widened Offset range: [-0.4, 0.4]
+    if random.random() < 0.8:
+        brightness_offset = random.uniform(-0.4, 0.4)
         img = img + brightness_offset
         
     # Clip to valid range [0, 1]
