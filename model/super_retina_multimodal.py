@@ -414,7 +414,9 @@ class SuperRetinaMultimodal(nn.Module):
 
         # ===== 使用 InfoNCE Loss =====
         # 将 batch 内所有 moving 描述子作为负样本池
-        loss = info_nce_loss(anchor, positive, all_mov_pool_norm, temperature=0.07)
+        # 缩放系数 0.2: 使 Desc Loss 和 Det Loss 量级平衡 (原始 InfoNCE 约 0.8~0.9, 缩放后约 0.16~0.18)
+        loss_raw = info_nce_loss(anchor, positive, all_mov_pool_norm, temperature=0.07)
+        loss = loss_raw * 0.2  # 缩放系数，打印值即为加权后的值
         return loss, True
     
     def forward(self, fix_img, mov_img, label_point_positions=None, value_map=None, learn_index=None,
