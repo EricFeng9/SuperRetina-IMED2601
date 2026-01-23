@@ -1,6 +1,7 @@
 """
-基于v3，引入了 apply_random_augmentation 函数，可以随机调节图像的 Gamma、对比度 (Contrast) 和亮度 (Brightness)
+基于v3_1, 添加域随机化增强 (Domain Randomization)
 """
+
 import torch
 import os
 import sys
@@ -11,6 +12,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 import torch.optim as optim
+import torch.nn.functional as F
 from tqdm import tqdm
 import argparse
 import random
@@ -20,48 +22,125 @@ sys.path.append(os.getcwd())
 
 # 使用新数据集脚本
 from dataset.FIVES_extract_v2.FIVES_extract_v2 import MultiModalDataset
+from dataset.CF_OCTA_v2_repaired.cf_octa_v2_repaired_dataset import CFOCTADataset
+from dataset.operation_pre_filtered_cffa.operation_pre_filtered_cffa_dataset import CFFADataset
+from dataset.operation_pre_filtered_cfoct.operation_pre_filtered_cfoct_dataset import CFOCTDataset
+from dataset.operation_pre_filtered_octfa.operation_pre_filtered_octfa_dataset import OCTFADataset
 from model.super_retina_multimodal import SuperRetinaMultimodal
 from common.train_util import value_map_load, value_map_save, affine_images
 from common.common_util import nms, sample_keypoint_desc
 from common.vessel_keypoint_extractor import extract_vessel_keypoints, extract_vessel_keypoints_fallback
+from torchvision import transforms
 
 
+# ============================================================================
+# 域随机化增强 (Domain Randomization)
+# 目的: 打破生成数据中 CF 和 FA/OCT 之间的纹理相关性
+#       迫使模型学习真正的跨模态不变性特征 (几何结构) 而非表面纹理
+# ============================================================================
 
-
-def apply_random_augmentation(img, keypoints=None):
+def apply_domain_randomization(img_tensor, gamma_range=(0.7, 1.5), 
+                                contrast_range=(0.7, 1.3),
+                                brightness_range=(-0.15, 0.15),
+                                noise_std_range=(0.0, 0.05),
+                                blur_prob=0.3, blur_kernel_range=(3, 7)):
     """
-    Apply random Gamma, Contrast, and Brightness augmentation with moderate intensity.
+    对输入图像张量应用域随机化增强
+    
     Args:
-        img: Tensor [B, C, H, W], range [0, 1]
+        img_tensor: [B, 1, H, W] 形状的图像张量，值域 [0, 1]
+        gamma_range: Gamma 变换范围
+        contrast_range: 对比度调整范围
+        brightness_range: 亮度偏移范围
+        noise_std_range: 高斯噪声标准差范围
+        blur_prob: 应用模糊的概率
+        blur_kernel_range: 模糊核大小范围 (奇数)
+    
     Returns:
-        Augmented image Tensor
+        增强后的图像张量 [B, 1, H, W]
     """
-    B, C, H, W = img.shape
-    device = img.device
+    B = img_tensor.shape[0]
+    device = img_tensor.device
+    augmented = img_tensor.clone()
     
-    # 1. Random Gamma
-    # Moderate Gamma range: [0.7, 1.5]
-    if random.random() < 0.7:
-        gamma = random.uniform(0.7, 1.5)
-        img = img.pow(gamma)
+    for b in range(B):
+        img = augmented[b:b+1]  # [1, 1, H, W]
         
-    # 2. Random Contrast
-    # Moderate Factor range: [0.7, 1.3]
-    if random.random() < 0.7:
-        contrast_factor = random.uniform(0.7, 1.3)
-        mean = img.mean(dim=(2, 3), keepdim=True)
-        img = (img - mean) * contrast_factor + mean
+        # 1. Gamma 变换 (模拟不同曝光条件)
+        gamma = random.uniform(*gamma_range)
+        img = torch.pow(img.clamp(min=1e-8), gamma)
         
-    # 3. Random Brightness
-    # Moderate Offset range: [-0.15, 0.15]
-    if random.random() < 0.7:
-        brightness_offset = random.uniform(-0.15, 0.15)
-        img = img + brightness_offset
+        # 2. 对比度调整 (围绕均值缩放)
+        contrast = random.uniform(*contrast_range)
+        mean_val = img.mean()
+        img = (img - mean_val) * contrast + mean_val
         
-    # Clip to valid range [0, 1]
-    img = torch.clamp(img, 0.0, 1.0)
+        # 3. 亮度偏移
+        brightness = random.uniform(*brightness_range)
+        img = img + brightness
+        
+        # 4. 高斯噪声
+        noise_std = random.uniform(*noise_std_range)
+        if noise_std > 0:
+            noise = torch.randn_like(img) * noise_std
+            img = img + noise
+        
+        # 5. 高斯模糊 (随机应用)
+        if random.random() < blur_prob:
+            kernel_size = random.choice(range(blur_kernel_range[0], blur_kernel_range[1] + 1, 2))  # 只选奇数
+            # 使用 OpenCV 进行模糊 (更高效)
+            img_np = img[0, 0].cpu().numpy()
+            img_np = cv2.GaussianBlur(img_np, (kernel_size, kernel_size), 0)
+            img = torch.from_numpy(img_np).unsqueeze(0).unsqueeze(0).to(device)
+        
+        # 裁剪到有效范围
+        augmented[b:b+1] = img.clamp(0, 1)
     
-    return img
+    return augmented
+
+
+def save_batch_visualization(img0_orig, img1_orig, img0_aug, img1_aug, 
+                              vessel_mask, save_dir, epoch, step, batch_size):
+    """
+    保存一个 batch 的可视化结果,用于检查域随机化效果
+    
+    Args:
+        img0_orig: 原始 fix 图像 [B, 1, H, W]
+        img1_orig: 原始 moving 图像 [B, 1, H, W]
+        img0_aug: 增强后 fix 图像 [B, 1, H, W]
+        img1_aug: 增强后 moving 图像 [B, 1, H, W]
+        vessel_mask: 血管掩码 [B, 1, H, W]
+        save_dir: 保存目录
+        epoch: 当前 epoch
+        step: 当前 step (batch index)
+        batch_size: batch 大小
+    """
+    vis_dir = os.path.join(save_dir, f'epoch{epoch}_visualization')
+    os.makedirs(vis_dir, exist_ok=True)
+    
+    for b in range(min(batch_size, img0_orig.shape[0])):
+        sample_dir = os.path.join(vis_dir, f'step{step}_sample{b}')
+        os.makedirs(sample_dir, exist_ok=True)
+        
+        # 转换为 numpy 并保存
+        fix_orig = (img0_orig[b, 0].cpu().numpy() * 255).astype(np.uint8)
+        mov_orig = (img1_orig[b, 0].cpu().numpy() * 255).astype(np.uint8)
+        fix_aug = (img0_aug[b, 0].cpu().numpy() * 255).astype(np.uint8)
+        mov_aug = (img1_aug[b, 0].cpu().numpy() * 255).astype(np.uint8)
+        vessel = (vessel_mask[b, 0].cpu().numpy() * 255).astype(np.uint8)
+        
+        cv2.imwrite(os.path.join(sample_dir, 'fix_original.png'), fix_orig)
+        cv2.imwrite(os.path.join(sample_dir, 'moving_original.png'), mov_orig)
+        cv2.imwrite(os.path.join(sample_dir, 'fix_augmented.png'), fix_aug)
+        cv2.imwrite(os.path.join(sample_dir, 'moving_augmented.png'), mov_aug)
+        cv2.imwrite(os.path.join(sample_dir, 'vessel_mask.png'), vessel)
+        
+        # 创建对比图: 左边原始,右边增强
+        comparison_fix = np.hstack([fix_orig, fix_aug])
+        comparison_mov = np.hstack([mov_orig, mov_aug])
+        cv2.imwrite(os.path.join(sample_dir, 'comparison_fix_orig_vs_aug.png'), comparison_fix)
+        cv2.imwrite(os.path.join(sample_dir, 'comparison_moving_orig_vs_aug.png'), comparison_mov)
+
 
 def draw_matches(img1, kps1, img2, kps2, matches, save_path):
     """
@@ -81,24 +160,20 @@ def draw_matches(img1, kps1, img2, kps2, matches, save_path):
     
     cv2.imwrite(save_path, out_img)
 
-def validate(model, val_loader, device, epoch, save_dir, log_file, train_config, val_cache=None):
+def validate(model, val_dataset, device, epoch, save_dir, log_file, train_config, mode):
     """
-    验证函数:评估模型在跨模态配准任务上的 MSE 表现
+    验证函数:评估模型在真实数据集上的表现
+    使用与 test_on_real.py 相同的评估流程
     """
+    from measurement import calculate_metrics
+    
     model.eval()
-    mse_list = []
+    all_metrics = []
     
     # 从配置中统一读取阈值
     nms_thresh = train_config.get('nms_thresh', 0.01)
     content_thresh = train_config.get('content_thresh', 0.7) # Lowe's Ratio
     geometric_thresh = train_config.get('geometric_thresh', 0.7) # RANSAC re-projection error
-    
-    # Initialize cache if needed
-    if val_cache is None:
-        val_cache = []
-        is_caching = True
-    else:
-        is_caching = False
     
     epoch_save_dir = os.path.join(save_dir, f'epoch{epoch}')
     os.makedirs(epoch_save_dir, exist_ok=True)
@@ -106,223 +181,167 @@ def validate(model, val_loader, device, epoch, save_dir, log_file, train_config,
     log_f = open(log_file, 'a')
     log_f.write(f'\n--- Validation Epoch {epoch} ---\n')
     
-    # Fill cache if empty (First run logic)
-    if len(val_cache) == 0:
-        print("Initializing Validation Set with Fixed Seed and 10 Samples...")
-        g = torch.Generator()
-        g.manual_seed(2024) # Fixed seed for reproducibility
-        
-        dataset_len = len(val_loader.dataset)
-        indices = torch.randperm(dataset_len, generator=g).tolist()
-        
-        # Take 10 samples or all if less than 10
-        selected_indices = set(indices[:10] if dataset_len >= 10 else indices)
-        
-        # Fetch specific samples
-        for batch_idx, data in enumerate(tqdm(val_loader, desc="Caching Val Data")):
-            if batch_idx in selected_indices:
-                val_cache.append(data)
-                if len(val_cache) >= len(selected_indices):
-                    break
+    # 图像预处理
+    transform = transforms.Compose([
+        transforms.ToPILImage(),
+        transforms.Resize((512, 512)),
+        transforms.ToTensor(),
+    ])
     
     with torch.no_grad():
-        for data in tqdm(val_cache, desc=f"Val Epoch {epoch}"):
-            img0 = data['image0'].to(device)
-            img1 = data['image1'].to(device)
-            img1_origin = data['image1_origin'].to(device)
+        for i in tqdm(range(len(val_dataset)), desc=f"Val Epoch {epoch}"):
+            raw_data = val_dataset.get_raw_sample(i)
             
-            # ===== 保存原始图像（增强之前）=====
-            img0_raw = img0.clone()
-            img1_raw = img1.clone()
+            # 根据不同模态解包数据
+            if mode == 'cfocta': # (cf, octa, pts_cf, pts_octa, path_cf, path_octa)
+                img_fix_raw, img_mov_raw, pts_fix_gt, pts_mov_gt, path_fix, path_mov = raw_data
+            elif mode == 'cffa': # (fa, cf, pts_fa, pts_cf, path_fa, path_cf)
+                img_mov_raw, img_fix_raw, pts_mov_gt, pts_fix_gt, path_mov, path_fix = raw_data
+            elif mode == 'cfoct': # (cf, oct, pts_cf, pts_oct, path_cf, path_oct)
+                img_fix_raw, img_mov_raw, pts_fix_gt, pts_mov_gt, path_fix, path_mov = raw_data
+            elif mode == 'octfa': # (fa, oct, pts_fa, pts_oct, path_fa, path_oct)
+                img_mov_raw, img_fix_raw, pts_mov_gt, pts_fix_gt, path_mov, path_fix = raw_data
             
-            # ===== 在验证阶段也应用随机增强 =====
-            img0 = apply_random_augmentation(img0)
-            img1 = apply_random_augmentation(img1)
-            
-            # Extract sample name
-            pair_names = data.get('pair_names', [['sample_unknown']])[0]
-            if isinstance(pair_names, (list, tuple)):
-                sample_name = pair_names[0]
+            # 确保灰度图用于模型输入
+            if img_fix_raw.ndim == 3:
+                img_fix_gray = cv2.cvtColor(img_fix_raw, cv2.COLOR_RGB2GRAY) if img_fix_raw.shape[2] == 3 else img_fix_raw.squeeze()
             else:
-                sample_name = pair_names
+                img_fix_gray = img_fix_raw
+
+            if img_mov_raw.ndim == 3:
+                img_mov_gray = cv2.cvtColor(img_mov_raw, cv2.COLOR_RGB2GRAY) if img_mov_raw.shape[2] == 3 else img_mov_raw.squeeze()
+            else:
+                img_mov_gray = img_mov_raw
             
-            sample_id = os.path.splitext(os.path.basename(str(sample_name)))[0]
+            sample_id = os.path.basename(path_fix).split('.')[0]
+            
+            # 准备模型输入
+            img0_tensor = transform(img_fix_gray).unsqueeze(0).to(device)
+            img1_tensor = transform(img_mov_gray).unsqueeze(0).to(device)
             
             # 提取跨模态特征
-            det_fix, desc_fix = model.network(img0)
-            det_mov, desc_mov = model.network(img1)
+            det_fix, desc_fix = model.network(img0_tensor)
+            det_mov, desc_mov = model.network(img1_tensor)
             
-            for b in range(img0.shape[0]):
-                # 有效区域屏蔽,防止边缘伪影干扰关键点提取
-                valid_mask = (img1[b:b+1] > 0.05).float()
-                import torch.nn.functional as F
-                valid_mask = -F.max_pool2d(-valid_mask, kernel_size=5, stride=1, padding=2)
-                det_mov_masked = det_mov[b:b+1] * valid_mask
-                
-                # 提取关键点
-                kps_fix = nms(det_fix[b:b+1], nms_thresh=nms_thresh, nms_size=5)[0]
-                kps_mov = nms(det_mov_masked, nms_thresh=nms_thresh, nms_size=5)[0]
-                
-                # 兜底策略:如果关键点太少,强制取响应最高的前100个点
-                if len(kps_fix) < 10:
-                     flat_det = det_fix[b, 0].view(-1)
-                     _, idx = torch.topk(flat_det, min(100, flat_det.numel()))
-                     y = idx // det_fix.shape[3]
-                     x = idx % det_fix.shape[3]
-                     kps_fix = torch.stack([x, y], dim=1).float()
+            # 有效区域屏蔽,防止边缘伪影干扰关键点提取
+            valid_mask = (img1_tensor > 0.05).float()
+            valid_mask = -F.max_pool2d(-valid_mask, kernel_size=5, stride=1, padding=2)
+            det_mov_masked = det_mov * valid_mask
+            
+            # 提取关键点
+            kps_fix = nms(det_fix, nms_thresh=nms_thresh, nms_size=5)[0]
+            kps_mov = nms(det_mov_masked, nms_thresh=nms_thresh, nms_size=5)[0]
+            
+            # 兜底策略:如果关键点太少,强制取响应最高的前100个点
+            if len(kps_fix) < 10:
+                flat_det = det_fix[0, 0].view(-1)
+                _, idx = torch.topk(flat_det, min(100, flat_det.numel()))
+                y = idx // det_fix.shape[3]; x = idx % det_fix.shape[3]
+                kps_fix = torch.stack([x, y], dim=1).float()
 
-                if len(kps_mov) < 10:
-                     flat_det = det_mov_masked[0, 0].view(-1)
-                     if flat_det.max() > 0:
-                        _, idx = torch.topk(flat_det, min(100, flat_det.numel()))
-                        y = idx // det_mov.shape[3]
-                        x = idx % det_mov.shape[3]
-                        kps_mov = torch.stack([x, y], dim=1).float()
+            if len(kps_mov) < 10:
+                flat_det = det_mov_masked[0, 0].view(-1)
+                if flat_det.max() > 0:
+                    _, idx = torch.topk(flat_det, min(100, flat_det.numel()))
+                    y = idx // det_mov.shape[3]; x = idx % det_mov.shape[3]
+                    kps_mov = torch.stack([x, y], dim=1).float()
+            
+            good_matches = []
+            if len(kps_fix) >= 4 and len(kps_mov) >= 4:
+                # 采样描述子并进行特征匹配
+                desc_fix_samp = sample_keypoint_desc(kps_fix[None], desc_fix, s=8)[0]
+                desc_mov_samp = sample_keypoint_desc(kps_mov[None], desc_mov, s=8)[0]
                 
-                mse = 10000.0 # 默认较大值表示配准失败
-                img_reg = None
-                good = []
+                d1 = desc_fix_samp.permute(1, 0).cpu().numpy()
+                d2 = desc_mov_samp.permute(1, 0).cpu().numpy()
+                
+                matches = cv2.BFMatcher().knnMatch(d1, d2, k=2)
+                
+                # 使用配置中的 content_thresh 作为 Ratio Test 阈值
+                for m, n in matches:
+                    if m.distance < content_thresh * n.distance:
+                        good_matches.append(m)
+            
+            # 映射回原始尺度
+            h_f, w_f = img_fix_raw.shape[:2]
+            h_m, w_m = img_mov_raw.shape[:2]
+            
+            kps_f_orig = kps_fix.cpu().numpy() * [w_f / 512.0, h_f / 512.0]
+            kps_m_orig = kps_mov.cpu().numpy() * [w_m / 512.0, h_m / 512.0]
+            
+            mkpts0 = np.array([kps_f_orig[m.queryIdx] for m in good_matches]) if good_matches else np.array([])
+            mkpts1 = np.array([kps_m_orig[m.trainIdx] for m in good_matches]) if good_matches else np.array([])
+            
+            # 使用 measurement.py 进行评估
+            metrics = calculate_metrics(
+                img_origin=img_fix_raw, img_result=img_mov_raw,
+                mkpts0=mkpts0, mkpts1=mkpts1,
+                kpts0=kps_f_orig, kpts1=kps_m_orig,
+                ctrl_pts0=pts_fix_gt, ctrl_pts1=pts_mov_gt
+            )
+            
+            all_metrics.append(metrics)
+            
+            log_f.write(f"ID: {sample_id} | SR_ME: {metrics['SR_ME']} | SR_MAE: {metrics['SR_MAE']} | "
+                       f"Rep: {metrics['Rep']:.4f} | MIR: {metrics['MIR']:.4f} | "
+                       f"MeanErr: {metrics['mean_error']:.2f} px\n")
+            
+            # 保存可视化结果
+            sample_save_dir = os.path.join(epoch_save_dir, sample_id)
+            os.makedirs(sample_save_dir, exist_ok=True)
+            
+            # 保存原始图像
+            cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_fix.png'), img_fix_raw)
+            cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_moving.png'), img_mov_raw)
 
-                if len(kps_fix) >= 4 and len(kps_mov) >= 4:
-                    # 采样描述子并进行特征匹配
-                    desc_fix_samp = sample_keypoint_desc(kps_fix[None], desc_fix[b:b+1], s=8)[0]
-                    desc_mov_samp = sample_keypoint_desc(kps_mov[None], desc_mov[b:b+1], s=8)[0]
+            # 如果有足够的匹配点,进行配准
+            if len(mkpts0) >= 4:
+                H_pred, _ = cv2.findHomography(mkpts1, mkpts0, cv2.RANSAC, geometric_thresh)
+                if H_pred is not None:
+                    img_m_gray = cv2.cvtColor(img_mov_raw, cv2.COLOR_RGB2GRAY) if img_mov_raw.ndim == 3 else img_mov_raw
+                    img_f_gray = cv2.cvtColor(img_fix_raw, cv2.COLOR_RGB2GRAY) if img_fix_raw.ndim == 3 else img_fix_raw
+                    reg_img = cv2.warpPerspective(img_m_gray, H_pred, (w_f, h_f))
+                    cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_moving_result.png'), reg_img)
                     
-                    d1 = desc_fix_samp.permute(1, 0).cpu().numpy()
-                    d2 = desc_mov_samp.permute(1, 0).cpu().numpy()
+                    # 计算棋盘格可视化
+                    def compute_checkerboard(img1, img2, n_grid=4):
+                        if img1.ndim == 3: img1 = cv2.cvtColor(img1, cv2.COLOR_RGB2GRAY) if img1.shape[2] == 3 else img1.squeeze()
+                        if img2.ndim == 3: img2 = cv2.cvtColor(img2, cv2.COLOR_RGB2GRAY) if img2.shape[2] == 3 else img2.squeeze()
+                        h, w = img1.shape[:2]
+                        if img2.shape[:2] != (h, w): img2 = cv2.resize(img2, (w, h))
+                        grid_h, grid_w = h // n_grid, w // n_grid
+                        checkerboard = np.zeros_like(img1)
+                        for i in range(n_grid):
+                            for j in range(n_grid):
+                                y_s, y_e = i * grid_h, (i + 1) * grid_h if i < n_grid - 1 else h
+                                x_s, x_e = j * grid_w, (j + 1) * grid_w if j < n_grid - 1 else w
+                                checkerboard[y_s:y_e, x_s:x_e] = img1[y_s:y_e, x_s:x_e] if (i + j) % 2 == 0 else img2[y_s:y_e, x_s:x_e]
+                        return checkerboard
                     
-                    bf = cv2.BFMatcher()
-                    matches = bf.knnMatch(d1, d2, k=2)
-                    
-                    # 使用配置中的 content_thresh 作为 Ratio Test 阈值
-                    for m, n in matches:
-                        if m.distance < content_thresh * n.distance:
-                            good.append(m)
-                
-                if len(good) >= 4:
-                    src_pts = np.float32([kps_fix[m.queryIdx].cpu().numpy() for m in good]).reshape(-1, 1, 2)
-                    dst_pts = np.float32([kps_mov[m.trainIdx].cpu().numpy() for m in good]).reshape(-1, 1, 2)
-                    
-                    # 利用配置中的 geometric_thresh 作为 RANSAC 容忍误差
-                    M, mask = cv2.findHomography(dst_pts, src_pts, cv2.RANSAC, geometric_thresh)
-                    
-                    if M is not None:
-                        img_warped_np = img1[b, 0].cpu().numpy() * 255.0
-                        h, w = img_warped_np.shape
-                        img_reg = cv2.warpPerspective(img_warped_np, M, (w, h))
-                        
-                        # 计算与 Ground Truth (原始对齐图像) 的均方误差
-                        img_gt_np = img1_origin[b, 0].cpu().numpy() * 255.0
-                        mse = np.mean((img_reg - img_gt_np) ** 2)
-                
-                mse_list.append(mse)
-                
-                # 保存可视化结果
-                sample_save_dir = os.path.join(epoch_save_dir, sample_id)
-                os.makedirs(sample_save_dir, exist_ok=True)
-                
-                # 原始图像（未增强）
-                fix_raw_np = (img0_raw[b, 0].cpu().numpy() * 255).astype(np.uint8)
-                mov_aff_raw_np = (img1_raw[b, 0].cpu().numpy() * 255).astype(np.uint8)
-                mov_in_np = (img1_origin[b, 0].cpu().numpy() * 255).astype(np.uint8)
-                
-                # 增强后的图像
-                fix_aug_np = (img0[b, 0].cpu().numpy() * 255).astype(np.uint8)
-                mov_aff_aug_np = (img1[b, 0].cpu().numpy() * 255).astype(np.uint8)
-                
-                # 保存增强后的输入图
-                cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_fix_augmented.png'), fix_aug_np)
-                cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_moving_warped_augmented.png'), mov_aff_aug_np)
-                
-                # ===== 新增：可视化从血管分割图中提取的关键点 =====
-                if 'vessel_mask0' in data:
-                    vessel_mask_np = (data['vessel_mask0'][b, 0].cpu().numpy() * 255).astype(np.uint8)
-                    
-                    # 提取关键点
-                    try:
-                        vessel_keypoints_np = extract_vessel_keypoints(vessel_mask_np, min_distance=8)
-                    except:
-                        try:
-                            vessel_keypoints_np = extract_vessel_keypoints_fallback(vessel_mask_np, min_distance=8)
-                        except:
-                            vessel_keypoints_np = (vessel_mask_np > 127).astype(np.float32)
-                    
-                    # 在固定图上绘制提取的关键点 (GT on fix) - 使用原始图
-                    vessel_kps_vis = cv2.cvtColor(fix_raw_np, cv2.COLOR_GRAY2BGR)
-                    keypoint_coords = np.column_stack(np.where(vessel_keypoints_np > 0.5))
-                    for coord in keypoint_coords:
-                        cv2.circle(vessel_kps_vis, (int(coord[1]), int(coord[0])), 4, (0, 0, 255), -1)  # 红色点
-                    cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_vessel_keypoints_extracted.png'), vessel_kps_vis)
+                    checker = compute_checkerboard(img_f_gray, reg_img, n_grid=4)
+                    cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_checkerboard.png'), checker)
+            
+            # 绘制匹配关系
+            draw_matches(img_fix_raw, kps_f_orig, img_mov_raw, kps_m_orig, good_matches, 
+                        os.path.join(sample_save_dir, f'{sample_id}_matches.png'))
 
-                    # ===== 新增：在已仿射的 moving 图像上绘制 GT 关键点 =====
-                    if 'T_0to1' in data and keypoint_coords.size > 0:
-                        H = data['T_0to1'][b].cpu().numpy()  # 3x3
-                        pts = np.stack([
-                            keypoint_coords[:, 1].astype(np.float32),  # x
-                            keypoint_coords[:, 0].astype(np.float32),  # y
-                            np.ones(len(keypoint_coords), dtype=np.float32)
-                        ], axis=0)  # [3, N]
-                        pts_mov = H @ pts  # [3, N]
-                        xs_mov = pts_mov[0] / (pts_mov[2] + 1e-6)
-                        ys_mov = pts_mov[1] / (pts_mov[2] + 1e-6)
-
-                        h_img, w_img = mov_aff_aug_np.shape
-                        valid = (xs_mov >= 0) & (xs_mov < w_img) & (ys_mov >= 0) & (ys_mov < h_img)
-                        xs_mov = xs_mov[valid]
-                        ys_mov = ys_mov[valid]
-
-                        mov_gt_kps_vis = cv2.cvtColor(mov_aff_aug_np, cv2.COLOR_GRAY2BGR)
-                        for x_m, y_m in zip(xs_mov, ys_mov):
-                            cv2.circle(mov_gt_kps_vis, (int(x_m), int(y_m)), 4, (0, 0, 255), -1)  # 红色 GT 点
-                        cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_affined_moving_gt_kps.png'), mov_gt_kps_vis)
-                
-                # 绘制关键点 - 使用增强后的图像
-                fix_with_kps = cv2.cvtColor(fix_aug_np, cv2.COLOR_GRAY2BGR)
-                for kp in kps_fix:
-                    cv2.circle(fix_with_kps, (int(kp[0]), int(kp[1])), 3, (0, 255, 0), -1)
-                
-                mov_aff_with_kps = cv2.cvtColor(mov_aff_aug_np, cv2.COLOR_GRAY2BGR)
-                for kp in kps_mov:
-                    cv2.circle(mov_aff_with_kps, (int(kp[0]), int(kp[1])), 3, (0, 255, 0), -1)
-
-                # 原始图像可视化：fix / moving_origin / moving_warped（未增强的）
-                cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_fix_raw.png'), fix_raw_np)
-                cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_moving_origin_raw.png'), mov_in_np)
-                cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_moving_warped_raw.png'), mov_aff_raw_np)
-
-                cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_fixed_kps.png'), fix_with_kps)
-                cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_affined_moving_kps.png'), mov_aff_with_kps)
-
-                reg_np = img_reg.astype(np.uint8) if img_reg is not None else fix_raw_np
-                cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_registered.png'), reg_np)
-
-                # ===== 新增：registered 与 fix 的 4x4 棋盘格拼接图 =====
-                h_img, w_img = fix_raw_np.shape
-                tile_h = h_img // 4
-                tile_w = w_img // 4
-                checker = np.zeros_like(fix_raw_np)
-                for i in range(4):
-                    for j in range(4):
-                        y0 = i * tile_h
-                        y1 = h_img if i == 3 else (i + 1) * tile_h
-                        x0 = j * tile_w
-                        x1 = w_img if j == 3 else (j + 1) * tile_w
-                        if (i + j) % 2 == 0:
-                            checker[y0:y1, x0:x1] = fix_raw_np[y0:y1, x0:x1]
-                        else:
-                            checker[y0:y1, x0:x1] = reg_np[y0:y1, x0:x1]
-                cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_fix_registered_checkerboard.png'), checker)
-                
-                # 绘制匹配关系 - 使用增强后的图像
-                draw_matches(fix_aug_np, kps_fix.cpu().numpy(), mov_aff_aug_np, kps_mov.cpu().numpy(), good, 
-                             os.path.join(sample_save_dir, f'{sample_id}_matches.png'))
-
-    avg_mse = np.mean(mse_list) if len(mse_list) > 0 else float('inf')
-    log_f.write(f'AVERAGE MSE: {avg_mse:.4f}\n')
+    # 计算平均指标
+    summary = {}
+    for key in ['SR_ME', 'SR_MAE', 'Rep', 'MIR', 'mean_error', 'max_error']:
+        vals = [m[key] for m in all_metrics if m[key] != float('inf')]
+        summary[key] = np.mean(vals) if vals else 0.0
+    
+    log_f.write(f"\n--- Validation Summary ---\n")
+    log_f.write(f"Overall SR_ME (Success Rate @5px):  {summary['SR_ME']*100:.2f}%\n")
+    log_f.write(f"Overall SR_MAE (Success Rate @10px): {summary['SR_MAE']*100:.2f}%\n")
+    log_f.write(f"Average Repeatability:              {summary['Rep']*100:.2f}%\n")
+    log_f.write(f"Average Matching Inliers Ratio:     {summary['MIR']*100:.2f}%\n")
+    log_f.write(f"Mean Registration Error:            {summary['mean_error']:.2f} px\n")
+    log_f.write(f"Max Registration Error (Average):   {summary['max_error']:.2f} px\n")
     log_f.close()
     
-    print(f'Validation Epoch {epoch} Finished. Avg MSE: {avg_mse:.4f}')
-    return avg_mse, val_cache
+    print(f'Validation Epoch {epoch} Finished. Mean Error: {summary["mean_error"]:.2f} px, SR_ME: {summary["SR_ME"]*100:.2f}%')
+    return summary['mean_error']
 
 def train_multimodal():
     """
@@ -383,7 +402,7 @@ def train_multimodal():
     
     log_print(f"Using device: {device} | Experiment: {exp_name}")
 
-    # 数据加载 - 使用新的FIVES数据集
+    # 数据加载 - 使用新的FIVES数据集进行训练
     root_dir = train_config['root_dir']
     batch_size = train_config['batch_size']
     img_size = train_config.get('img_size', 512)
@@ -396,16 +415,18 @@ def train_multimodal():
         img_size=img_size, 
         df=df
     )
-    val_set = MultiModalDataset(
-        root_dir=root_dir, 
-        mode=reg_type, 
-        split='val', 
-        img_size=img_size, 
-        df=df
-    )
+    
+    # 验证集使用真实数据集 (与 test_on_real.py 一致)
+    if reg_type == 'cfocta':
+        val_set = CFOCTADataset(root_dir='dataset/CF_OCTA_v2_repaired', split='val', mode='cf2octa')
+    elif reg_type == 'cffa':
+        val_set = CFFADataset(root_dir='dataset/operation_pre_filtered_cffa', split='val', mode='fa2cf')
+    elif reg_type == 'cfoct':
+        val_set = CFOCTDataset(root_dir='dataset/operation_pre_filtered_cfoct', split='val', mode='cf2oct')
+    elif reg_type == 'octfa':
+        val_set = OCTFADataset(root_dir='dataset/operation_pre_filtered_octfa', split='val', mode='fa2oct')
     
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, num_workers=4)
-    val_loader = DataLoader(val_set, batch_size=1, shuffle=False, num_workers=4)
     
     # 初始化多模态 SuperRetina 模型
     model = SuperRetinaMultimodal(train_config, device=device)
@@ -431,17 +452,16 @@ def train_multimodal():
         os.makedirs(value_map_save_dir)
         
     value_maps_running = {} if not is_value_map_save else None
-    best_mse = float('inf')
+    best_mean_error = float('inf')
     
     # 早停机制变量 (仅在epoch >= 100后启用)
     patience = 5  # 验证损失连续5次不下降则早停
     patience_counter = 0
-    best_val_mse = float('inf')
+    best_val_error = float('inf')
 
     # 初始验证
-    val_cache = []
     log_print("Running initial validation...")
-    _, val_cache = validate(model, val_loader, device, 0, save_root, log_file, train_config, val_cache=val_cache)
+    _ = validate(model, val_set, device, 0, save_root, log_file, train_config, reg_type)
 
     pke_start_epoch = train_config.get('pke_start_epoch', 40) # 默认40以后开启PKE
     
@@ -468,16 +488,22 @@ def train_multimodal():
         running_loss_desc = 0.0
         total_samples = 0
         
-        for data in tqdm(train_loader, desc=f"Train Epoch {epoch}"):
-            img0 = data['image0'].to(device)
-            img1 = data['image1'].to(device)
+        for step_idx, data in enumerate(tqdm(train_loader, desc=f"Train Epoch {epoch}")):
+            img0_orig = data['image0'].to(device)
+            img1_orig = data['image1'].to(device)
             
-            # ===== 添加随机图像增强 (Gamma, Contrast, Brightness) =====
-            # 仅在训练且非验证阶段使用（虽然这里就在训练循环里，肯定是训练阶段）
-            # 对 fixed 和 moving 图像独立进行增强，模拟真实临床场景的多变曝光
-            img0 = apply_random_augmentation(img0)
-            img1 = apply_random_augmentation(img1)
+            # ===== 域随机化增强: 对 fix 和 moving 分别应用独立的随机扰动 =====
+            # 关键: 两边使用完全独立的随机参数,打破它们之间的纹理相关性
+            img0 = apply_domain_randomization(img0_orig)
+            img1 = apply_domain_randomization(img1_orig)
             
+            # ===== 可视化: 保存第一个 epoch 的前两个 batch =====
+            if epoch == 1 and step_idx < 2:
+                save_batch_visualization(
+                    img0_orig, img1_orig, img0, img1,
+                    data['vessel_mask0'].to(device),
+                    save_root, epoch, step_idx + 1, batch_size
+                )
             # ===== 关键修改：从完整血管分割图中提取稀疏的分叉点 =====
             # 这些分叉点将作为训练时的监督信号，引导模型学习独特的关键点
             vessel_mask_full = data['vessel_mask0']  # [B, 1, H, W]
@@ -545,13 +571,13 @@ def train_multimodal():
         
         # 每 5 个 Epoch 进行一次验证并保存模型
         if epoch % 5 == 0:
-            avg_mse, _ = validate(model, val_loader, device, epoch, save_root, log_file, train_config, val_cache=val_cache)
+            mean_error = validate(model, val_set, device, epoch, save_root, log_file, train_config, reg_type)
             
             state = {
                 'net': model.state_dict(),
                 'optimizer': optimizer.state_dict(),
                 'epoch': epoch,
-                'mse': avg_mse
+                'mean_error': mean_error
             }
             
             # 保存最新模型
@@ -560,31 +586,31 @@ def train_multimodal():
             torch.save(state, os.path.join(latest_dir, 'checkpoint.pth'))
             # 保存epoch信息
             with open(os.path.join(latest_dir, 'checkpoint_info.txt'), 'w') as f:
-                f.write(f'Latest Checkpoint\nEpoch: {epoch}\nMSE: {avg_mse:.4f}\n')
+                f.write(f'Latest Checkpoint\nEpoch: {epoch}\nMean Error: {mean_error:.4f} px\n')
             
-            # 保存 MSE 表现最好的模型
-            if avg_mse < best_mse:
-                log_print(f"New Best MSE: {avg_mse:.4f} (Previous: {best_mse:.4f})")
-                best_mse = avg_mse
+            # 保存 Mean Error 表现最好的模型 (越小越好)
+            if mean_error < best_mean_error:
+                log_print(f"New Best Mean Error: {mean_error:.4f} px (Previous: {best_mean_error:.4f} px)")
+                best_mean_error = mean_error
                 best_dir = os.path.join(save_root, 'bestcheckpoint')
                 os.makedirs(best_dir, exist_ok=True)
                 torch.save(state, os.path.join(best_dir, 'checkpoint.pth'))
                 # 保存epoch信息
                 with open(os.path.join(best_dir, 'checkpoint_info.txt'), 'w') as f:
-                    f.write(f'Best Checkpoint\nEpoch: {epoch}\nMSE: {avg_mse:.4f}\n')
+                    f.write(f'Best Checkpoint\nEpoch: {epoch}\nMean Error: {mean_error:.4f} px\n')
             
             # 早停机制 (仅在 epoch >= 100 后启用)
             if epoch >= 100:
-                if avg_mse < best_val_mse:
-                    best_val_mse = avg_mse
+                if mean_error < best_val_error:
+                    best_val_error = mean_error
                     patience_counter = 0
-                    log_print(f'[Early Stopping] Validation MSE improved to {best_val_mse:.4f}. Reset patience counter.')
+                    log_print(f'[Early Stopping] Validation Mean Error improved to {best_val_error:.4f} px. Reset patience counter.')
                 else:
                     patience_counter += 1
-                    log_print(f'[Early Stopping] Validation MSE did not improve. Patience: {patience_counter}/{patience}')
+                    log_print(f'[Early Stopping] Validation Mean Error did not improve. Patience: {patience_counter}/{patience}')
                 
                 if patience_counter >= patience:
-                    log_print(f'Early stopping triggered at epoch {epoch}. Best validation MSE: {best_val_mse:.4f}')
+                    log_print(f'Early stopping triggered at epoch {epoch}. Best validation Mean Error: {best_val_error:.4f} px')
                     break
     
     # 训练结束，关闭日志文件
