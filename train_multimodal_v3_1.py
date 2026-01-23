@@ -1,3 +1,7 @@
+"""
+基于v3，将验证集换成了真实数据集
+"""
+
 import torch
 import os
 import sys

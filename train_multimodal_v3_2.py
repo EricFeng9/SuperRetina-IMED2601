@@ -1,3 +1,6 @@
+"""
+基于v3，引入了 apply_random_augmentation 函数，可以随机调节图像的 Gamma、对比度 (Contrast) 和亮度 (Brightness)
+"""
 import torch
 import os
 import sys
