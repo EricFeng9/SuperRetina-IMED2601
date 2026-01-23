@@ -52,7 +52,7 @@ def validate(model, val_loader, device, epoch, save_dir, log_file, train_config,
     # 从配置中统一读取阈值
     nms_thresh = train_config.get('nms_thresh', 0.01)
     content_thresh = train_config.get('content_thresh', 0.7) # Lowe's Ratio
-    geometric_thresh = train_config.get('geometric_thresh', 3.0) # RANSAC re-projection error
+    geometric_thresh = train_config.get('geometric_thresh', 0.7) # RANSAC re-projection error
     
     # Initialize cache if needed
     if val_cache is None:
@@ -191,13 +191,34 @@ def validate(model, val_loader, device, epoch, save_dir, log_file, train_config,
                         except:
                             vessel_keypoints_np = (vessel_mask_np > 127).astype(np.float32)
                     
-                    # 在原图上绘制提取的关键点
+                    # 在固定图上绘制提取的关键点 (GT on fix)
                     vessel_kps_vis = cv2.cvtColor(fix_np, cv2.COLOR_GRAY2BGR)
                     keypoint_coords = np.column_stack(np.where(vessel_keypoints_np > 0.5))
                     for coord in keypoint_coords:
                         cv2.circle(vessel_kps_vis, (int(coord[1]), int(coord[0])), 4, (0, 0, 255), -1)  # 红色点
-                    
                     cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_vessel_keypoints_extracted.png'), vessel_kps_vis)
+
+                    # ===== 新增：在已仿射的 moving 图像上绘制 GT 关键点 =====
+                    if 'T_0to1' in data and keypoint_coords.size > 0:
+                        H = data['T_0to1'][b].cpu().numpy()  # 3x3
+                        pts = np.stack([
+                            keypoint_coords[:, 1].astype(np.float32),  # x
+                            keypoint_coords[:, 0].astype(np.float32),  # y
+                            np.ones(len(keypoint_coords), dtype=np.float32)
+                        ], axis=0)  # [3, N]
+                        pts_mov = H @ pts  # [3, N]
+                        xs_mov = pts_mov[0] / (pts_mov[2] + 1e-6)
+                        ys_mov = pts_mov[1] / (pts_mov[2] + 1e-6)
+
+                        h_img, w_img = mov_aff_np.shape
+                        valid = (xs_mov >= 0) & (xs_mov < w_img) & (ys_mov >= 0) & (ys_mov < h_img)
+                        xs_mov = xs_mov[valid]
+                        ys_mov = ys_mov[valid]
+
+                        mov_gt_kps_vis = cv2.cvtColor(mov_aff_np, cv2.COLOR_GRAY2BGR)
+                        for x_m, y_m in zip(xs_mov, ys_mov):
+                            cv2.circle(mov_gt_kps_vis, (int(x_m), int(y_m)), 4, (0, 0, 255), -1)  # 红色 GT 点
+                        cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_affined_moving_gt_kps.png'), mov_gt_kps_vis)
                 
                 # 绘制关键点
                 fix_with_kps = cv2.cvtColor(fix_np, cv2.COLOR_GRAY2BGR)
@@ -208,9 +229,33 @@ def validate(model, val_loader, device, epoch, save_dir, log_file, train_config,
                 for kp in kps_mov:
                     cv2.circle(mov_aff_with_kps, (int(kp[0]), int(kp[1])), 3, (0, 255, 0), -1)
 
+                # 原始图像可视化：fix / moving_origin / moving_warped
+                cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_fix_raw.png'), fix_np)
+                cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_moving_origin_raw.png'), mov_in_np)
+                cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_moving_warped_raw.png'), mov_aff_np)
+
                 cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_fixed_kps.png'), fix_with_kps)
                 cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_affined_moving_kps.png'), mov_aff_with_kps)
-                cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_registered.png'), img_reg.astype(np.uint8) if img_reg is not None else fix_np)
+
+                reg_np = img_reg.astype(np.uint8) if img_reg is not None else fix_np
+                cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_registered.png'), reg_np)
+
+                # ===== 新增：registered 与 fix 的 4x4 棋盘格拼接图 =====
+                h_img, w_img = fix_np.shape
+                tile_h = h_img // 4
+                tile_w = w_img // 4
+                checker = np.zeros_like(fix_np)
+                for i in range(4):
+                    for j in range(4):
+                        y0 = i * tile_h
+                        y1 = h_img if i == 3 else (i + 1) * tile_h
+                        x0 = j * tile_w
+                        x1 = w_img if j == 3 else (j + 1) * tile_w
+                        if (i + j) % 2 == 0:
+                            checker[y0:y1, x0:x1] = fix_np[y0:y1, x0:x1]
+                        else:
+                            checker[y0:y1, x0:x1] = reg_np[y0:y1, x0:x1]
+                cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_fix_registered_checkerboard.png'), checker)
                 
                 # 绘制匹配关系
                 draw_matches(fix_np, kps_fix.cpu().numpy(), mov_aff_np, kps_mov.cpu().numpy(), good, 
@@ -399,13 +444,19 @@ def train_multimodal():
                                       img0.shape[-2:], value_maps_running)
             value_maps = value_maps.to(device)
             
+            # 读取真值几何变换矩阵 H_0to1 (image0 -> image1)，用于描述子热身阶段
+            H_0to1 = data.get('T_0to1', None)
+            if H_0to1 is not None:
+                H_0to1 = H_0to1.to(device)
+            
             optimizer.zero_grad()
             
             with torch.set_grad_enabled(True):
                 # 调用模型 forward 方法，传入关键点掩码（而不是完整血管掩码）作为初始标签
                 # 同时传入完整血管掩码 vessel_mask_full 用于 PKE 候选点过滤
                 loss, number_pts, loss_det_item, loss_desc_item, enhanced_kp, enhanced_label, det_pred, n_det, n_desc = \
-                    model(img0, img1, vessel_keypoints, value_maps, learn_index, descriptor_only=descriptor_only, vessel_mask=vessel_mask_full)
+                    model(img0, img1, vessel_keypoints, value_maps, learn_index,
+                          descriptor_only=descriptor_only, vessel_mask=vessel_mask_full, H_0to1=H_0to1)
                     
                 loss.backward()
                 optimizer.step()

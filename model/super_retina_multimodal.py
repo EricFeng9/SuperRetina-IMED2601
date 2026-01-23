@@ -204,10 +204,129 @@ class SuperRetinaMultimodal(nn.Module):
 
         # 使用改进的跨模态三元组损失
         loss = triplet_margin_loss_gor(anchor, positive, negatives_hard, negatives_random, margin=0.8)
-
+        
         return loss, True
 
-    def forward(self, fix_img, mov_img, label_point_positions=None, value_map=None, learn_index=None, descriptor_only=False, vessel_mask=None):
+    def descriptor_loss_warmup(self, label_point_positions, descriptor_pred_fix,
+                               descriptor_pred_mov, H_0to1, max_points_per_img=512):
+        """
+        描述子热身阶段的损失:
+        使用数据集中提供的真值仿射矩阵 H_0to1, 将 CF 上的 vessel_keypoints
+        映射到 moving 图像上, 直接构造跨模态正样本对, 再进行三元组损失。
+        """
+        device = descriptor_pred_fix.device
+        B, _, H, W = label_point_positions.shape
+        D = descriptor_pred_fix.shape[1]
+
+        # 将 H_0to1 转到当前设备, 形状应为 [B, 3, 3]
+        if H_0to1 is None:
+            # 没有提供真值几何, 返回 0 loss, 但保持梯度图结构
+            return torch.tensor(0., requires_grad=True, device=device), False
+
+        if H_0to1.dim() == 2:
+            H_0to1 = H_0to1.unsqueeze(0)
+        H_0to1 = H_0to1.to(device)
+
+        anchor_list = []
+        positive_list = []
+        negatives_hard_list = []
+        negatives_random_list = []
+
+        for b in range(B):
+            # 取出该样本的关键点掩码 [H, W]
+            kp_mask = (label_point_positions[b, 0] > 0.5)
+            ys, xs = torch.where(kp_mask)
+            if ys.numel() == 0:
+                continue
+
+            # 随机下采样, 避免显存过大
+            if ys.numel() > max_points_per_img:
+                idx = torch.randperm(ys.numel(), device=device)[:max_points_per_img]
+                ys = ys[idx]
+                xs = xs[idx]
+
+            # 构造齐次坐标并应用 H_0to1, 得到 moving 图像上的对应点
+            ones = torch.ones_like(xs, dtype=torch.float32, device=device)
+            pts_fix = torch.stack([xs.float(), ys.float(), ones], dim=0)  # [3, N]
+            H_mat = H_0to1[b]  # [3, 3] 真值仿射矩阵 (注意不要覆盖图像高度 H)
+            pts_mov = H_mat @ pts_fix  # [3, N]
+
+            # 归一化 (一般仿射, pts_mov[2]≈1)
+            xs_mov = pts_mov[0] / (pts_mov[2] + 1e-6)
+            ys_mov = pts_mov[1] / (pts_mov[2] + 1e-6)
+
+            # 只保留在图像内部的点
+            valid = (xs_mov >= 0) & (xs_mov <= (W - 1)) & (ys_mov >= 0) & (ys_mov <= (H - 1))
+            if valid.sum() == 0:
+                continue
+
+            xs_fix_valid = xs[valid]
+            ys_fix_valid = ys[valid]
+            xs_mov_valid = xs_mov[valid]
+            ys_mov_valid = ys_mov[valid]
+
+            # 组装成 [N, 2] 的 (x, y) 坐标
+            kps_fix = torch.stack([xs_fix_valid, ys_fix_valid], dim=1)  # [N, 2]
+            kps_mov = torch.stack([xs_mov_valid, ys_mov_valid], dim=1)  # [N, 2]
+
+            # 基于坐标从 descriptor feature map 中采样描述子
+            desc_fix = sample_keypoint_desc(kps_fix[None], descriptor_pred_fix[b:b+1], s=self.scale)[0]   # [C, N]
+            desc_mov = sample_keypoint_desc(kps_mov[None], descriptor_pred_mov[b:b+1], s=self.scale)[0]   # [C, N]
+
+            n = desc_fix.shape[1]
+            if n == 0:
+                continue
+            if n > 1000:
+                # 和原实现保持一致, 防止极端情况下显存溢出
+                return torch.tensor(0., requires_grad=True, device=device), False
+
+            # 负样本采样 (与原 descriptor_loss 一致)
+            desc_fix_view = desc_fix.view(D, -1, 1)
+            desc_mov_view = desc_mov.view(D, 1, -1)
+            ar = torch.arange(n, device=device)
+
+            # 随机负样本
+            neg_index2 = []
+            if n == 1:
+                neg_index2.append(0)
+            else:
+                for j in range(n):
+                    t = j
+                    while t == j:
+                        t = random.randint(0, n - 1)
+                    neg_index2.append(t)
+            neg_index2 = torch.tensor(neg_index2, dtype=torch.long, device=device)
+
+            # 最难负样本
+            with torch.no_grad():
+                dis = torch.norm(desc_fix_view - desc_mov_view, dim=0)  # [N, N]
+                dis[ar, ar] = dis.max() + 1  # 排除正样本本身
+                neg_index1 = dis.argmin(dim=1)
+
+            anchor_list.append(desc_fix.permute(1, 0))                        # [N, D]
+            positive_list.append(desc_mov.permute(1, 0))                      # [N, D]
+            negatives_hard_list.append(desc_mov[:, neg_index1.long()].permute(1, 0))   # [N, D]
+            negatives_random_list.append(desc_mov[:, neg_index2.long()].permute(1, 0)) # [N, D]
+
+        if len(anchor_list) == 0:
+            return torch.tensor(0., requires_grad=True, device=device), False
+
+        anchor = torch.cat(anchor_list, dim=0)
+        positive = torch.cat(positive_list, dim=0)
+        negatives_hard = torch.cat(negatives_hard_list, dim=0)
+        negatives_random = torch.cat(negatives_random_list, dim=0)
+
+        # 归一化后使用同一三元组损失
+        anchor = F.normalize(anchor, dim=-1, p=2)
+        positive = F.normalize(positive, dim=-1, p=2)
+        negatives_hard = F.normalize(negatives_hard, dim=-1, p=2)
+        negatives_random = F.normalize(negatives_random, dim=-1, p=2)
+
+        loss = triplet_margin_loss_gor(anchor, positive, negatives_hard, negatives_random, margin=0.8)
+        return loss, True
+    
+    def forward(self, fix_img, mov_img, label_point_positions=None, value_map=None, learn_index=None,
+                descriptor_only=False, vessel_mask=None, H_0to1=None):
         """
         主前向传播逻辑
         :param fix_img: 固定图像 (CF)
@@ -217,8 +336,9 @@ class SuperRetinaMultimodal(nn.Module):
         :param vessel_mask: 固定图像的血管分割图 [B, 1, H, W]，用于PKE候选点过滤
         """
         
-        # 1. 提取固定图像（CF 模态）的特征
+        # 1. 提取固定图像（CF 模态）与运动图像的特征
         detector_pred_fix, descriptor_pred_fix = self.network(fix_img)
+        detector_pred_mov, descriptor_pred_mov = self.network(mov_img)
         
         enhanced_label_pts = None
         enhanced_label = None
@@ -236,65 +356,104 @@ class SuperRetinaMultimodal(nn.Module):
             loss_detector = torch.tensor(0., requires_grad=True).to(fix_img)
             loss_descriptor = torch.tensor(0., requires_grad=True).to(fix_img)
 
-            # 2. 对运动图像（FA/OCT 模态）进行几何扰动 (Data Augmentation)
-            # 模拟真实配准中的大尺度旋转和平移
-            with torch.no_grad():
-                affine_mov, grid, grid_inverse = affine_images(mov_img, used_for='detector')
+            if descriptor_only:
+                # 描述子热身阶段: 不进行 PKE / 检测器损失, 只使用真值 H_0to1 做几何监督
+                loss_detector = torch.tensor(0., requires_grad=True).to(fix_img)
+                loss_descriptor, descriptor_train_flag = self.descriptor_loss_warmup(
+                    label_point_positions, descriptor_pred_fix, descriptor_pred_mov, H_0to1
+                )
+                number_pts = 0
+            else:
+                # 联合训练阶段 (descriptor_only=False)
+                # 如果数据集已经提供了真值仿射矩阵 H_0to1 (如 FIVES), 则不再做额外的随机仿射,
+                # 而是直接使用 H_0to1 构建几何映射网格, 将固定图上的点映射到 moving 图像上。
+                B, _, H, W = detector_pred_fix.shape
+
+                if H_0to1 is not None:
+                    # 使用真值 H_0to1 构造 grid_inverse: [B, H, W, 2]
+                    if H_0to1.dim() == 2:
+                        H_0to1 = H_0to1.unsqueeze(0)
+                    H_0to1 = H_0to1.to(fix_img.device)
+
+                    ys, xs = torch.meshgrid(
+                        torch.arange(H, device=fix_img.device),
+                        torch.arange(W, device=fix_img.device),
+                        indexing='ij'
+                    )
+                    ones = torch.ones_like(xs, dtype=torch.float32)
+                    base_pts = torch.stack([xs.float(), ys.float(), ones], dim=-1)  # [H, W, 3]
+                    base_pts_flat = base_pts.view(-1, 3)  # [H*W, 3]
+
+                    grid_list = []
+                    for b in range(B):
+                        Hmat = H_0to1[b]  # [3, 3]
+                        pts_mov = base_pts_flat @ Hmat.t()  # [N, 3]
+                        xs_mov = pts_mov[:, 0] / (pts_mov[:, 2] + 1e-6)
+                        ys_mov = pts_mov[:, 1] / (pts_mov[:, 2] + 1e-6)
+
+                        # 归一化到 [-1, 1] 供 grid_sample 使用
+                        u = xs_mov / (W - 1) * 2 - 1
+                        v = ys_mov / (H - 1) * 2 - 1
+                        grid_b = torch.stack([u, v], dim=-1).view(H, W, 2)
+                        grid_list.append(grid_b)
+
+                    grid_inverse = torch.stack(grid_list, dim=0)  # [B, H, W, 2]
+
+                    # 在联合期, 将 "affine" 分支直接等同于 moving 分支
+                    detector_pred_mov_aug = detector_pred_mov
+                    descriptor_pred_mov_aug = descriptor_pred_mov
+                    valid_mask = torch.ones_like(detector_pred_mov_aug)
+
+                # 屏蔽边缘区域的检测响应 (对于 FIVES 情况下 valid_mask 全 1, 等价于不变)
+                detector_pred_mov_aug = detector_pred_mov_aug * valid_mask
                 
-                # 有效区域掩码：排除变换产生的黑色边缘
-                valid_mask = (affine_mov > 0.05).float()
-                # 腐蚀操作，确保关键点不在边缘采样
-                valid_mask = -F.max_pool2d(-valid_mask, kernel_size=5, stride=1, padding=2)
-            
-            # 提取扰动后运动图像的特征
-            detector_pred_mov_aug, descriptor_pred_mov_aug = self.network(affine_mov)
-            
-            # 屏蔽边缘区域的检测响应
-            detector_pred_mov_aug = detector_pred_mov_aug * valid_mask
-
-            # 3. 跨模态渐进式关键点扩充 (PKE)
-            # 核心思想：通过几何校验和内容校验，自动发现两模态间可靠的匹配点作为新增标签
-            loss_cal = self.dice
-            if len(learn_index[0]) != 0 and not descriptor_only:
-                # pke_learn 内部实现了几何一致性损失 (l_geo) 和 动态标签演化 (l_clf)
-                loss_detector, number_pts, value_map_update, enhanced_label_pts, enhanced_label = \
-                    pke_learn(detector_pred_fix[learn_index], descriptor_pred_fix[learn_index],
-                              grid_inverse[learn_index], detector_pred_mov_aug[learn_index],
-                              descriptor_pred_mov_aug[learn_index], self.kernel, loss_cal,
-                              label_point_positions[learn_index], value_map[learn_index],
-                              self.config, self.PKE_learn, vessel_mask=vessel_mask[learn_index] if vessel_mask is not None else None)
-
-            # 辅助可视化
-            if enhanced_label_pts is not None:
-                enhanced_label_pts_tmp = label_point_positions.clone()
-                enhanced_label_pts_tmp[learn_index] = enhanced_label_pts
-                enhanced_label_pts = enhanced_label_pts_tmp
-            if enhanced_label is not None:
-                enhanced_label_tmp = label_point_positions.clone()
-                enhanced_label_tmp[learn_index] = enhanced_label
-                enhanced_label = enhanced_label_tmp
-
-            detector_pred_copy = detector_pred_fix.clone().detach()
-
-            # 4. 跨模态描述子损失 (l_des)
-            # 再次生成轻微扰动的运动图像，用于描述子学习（通常比检测器训练的扰动更小，以学习精细特征）
-            affine_mov_desc, grid_desc, grid_inverse_desc = affine_images(mov_img, used_for='descriptor')
-            _, descriptor_pred_mov_aug_desc = self.network(affine_mov_desc)
-            
-            loss_descriptor, descriptor_train_flag = self.descriptor_loss(
-                detector_pred_copy, label_point_positions,
-                descriptor_pred_fix,
-                descriptor_pred_mov_aug_desc,
-                grid_inverse_desc,
-                affine_detector_pred=None 
-            )
-
-            if self.PKE_learn and len(learn_index[0]) != 0:
-                value_map[learn_index] = value_map_update
+                # 3. 跨模态渐进式关键点扩充 (PKE)
+                # 核心思想：通过几何校验和内容校验，自动发现两模态间可靠的匹配点作为新增标签
+                loss_cal = self.dice
+                if len(learn_index[0]) != 0:
+                    # pke_learn 内部实现了几何一致性损失 (l_geo) 和 动态标签演化 (l_clf)
+                    loss_detector, number_pts, value_map_update, enhanced_label_pts, enhanced_label = \
+                        pke_learn(detector_pred_fix[learn_index], descriptor_pred_fix[learn_index],
+                                  grid_inverse[learn_index], detector_pred_mov_aug[learn_index],
+                                  descriptor_pred_mov_aug[learn_index], self.kernel, loss_cal,
+                                  label_point_positions[learn_index], value_map[learn_index],
+                                  self.config, self.PKE_learn, vessel_mask=vessel_mask[learn_index] if vessel_mask is not None else None)
+                
+                # 辅助可视化
+                if enhanced_label_pts is not None:
+                    enhanced_label_pts_tmp = label_point_positions.clone()
+                    enhanced_label_pts_tmp[learn_index] = enhanced_label_pts
+                    enhanced_label_pts = enhanced_label_pts_tmp
+                if enhanced_label is not None:
+                    enhanced_label_tmp = label_point_positions.clone()
+                    enhanced_label_tmp[learn_index] = enhanced_label
+                    enhanced_label = enhanced_label_tmp
+                
+                detector_pred_copy = detector_pred_fix.clone().detach()
+                
+                # 4. 跨模态描述子损失 (l_des)
+                # 若有真值 H_0to1, 直接使用该几何关系构造 grid_inverse_desc, 避免重复随机仿射
+                if H_0to1 is not None:
+                    grid_inverse_desc = grid_inverse
+                    descriptor_pred_mov_aug_desc = descriptor_pred_mov
+                else:
+                    affine_mov_desc, grid_desc, grid_inverse_desc = affine_images(mov_img, used_for='descriptor')
+                    _, descriptor_pred_mov_aug_desc = self.network(affine_mov_desc)
+                
+                loss_descriptor, descriptor_train_flag = self.descriptor_loss(
+                    detector_pred_copy, label_point_positions,
+                    descriptor_pred_fix,
+                    descriptor_pred_mov_aug_desc,
+                    grid_inverse_desc,
+                    affine_detector_pred=None 
+                )
+                
+                if self.PKE_learn and len(learn_index[0]) != 0:
+                    value_map[learn_index] = value_map_update
             
             # 综合损失优化
             loss = loss_detector + loss_descriptor
-
+            
             return loss, number_pts, loss_detector.cpu().data.sum(), \
                    loss_descriptor.cpu().data.sum(), enhanced_label_pts, \
                    enhanced_label, detector_pred_fix, loss_detector_num, loss_descriptor_num
