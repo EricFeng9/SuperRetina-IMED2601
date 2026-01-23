@@ -108,25 +108,33 @@ $$L = l_{det\_pke} + l_{geo\_pke} + l_{des\_gt}$$
 
 ---
 
-## 阶段 4：Sim-to-Real 适应性微调 (Phase 4)
-**周期**：Epoch 100+ (Based on Stage 1 convergence)
-**状态**：PKE **ON**, Replay Buffer **ON**
+## 阶段 4：Sim-to-Real 全量 PKE 微调 (Phase 4)
+**周期**：Epoch 100+
+**状态**：**Computed H** + **Full PKE**
 
-### 4.1 目标
-- **Domain Adaptation**: 适应真实数据 ($D_{real}$) 的噪声、光照和纹理分布。
-- **Knowledge Retention**: 通过回放少量生成数据 ($D_{syn}$)，保持对血管结构的通用理解，防止过拟合真实数据的假阳性噪声。
+### 4.1 核心发现与策略
+根据 `operation_pre_filtered_octfa_dataset.py`，真实数据集中包含足够数量的配对关键点 ($>4$)，这允许我们**现场计算出可靠的全图单应性矩阵 ($H_{computed}$)**。
+这意味着：
+1.  我们不需要妥协使用稀疏监督。
+2.  我们可以将真实数据视作拥有“准 Ground Truth H”的数据。
+3.  我们可以**完全复用 Phase 3 的 PKE 训练流程**，直接在真实图像上跑全量 PKE。
 
-### 4.2 数据策略 (Real-Heavy Mix)
-- **混合比例**: $D_{real} : D_{syn} \approx 8 : 2$ (或 $9 : 1$)。
-- **Batch Composition**: 每个 Batch 包含大部分真实样本和小部分生成样本。
+### 4.2 数据流设计 (Hybrid Batch)
+1.  **Replay Buffer (Syn, ~20%)**:
+    -   $H_{gt}$来自数据集预设。
+2.  **Real Data (Real, ~80%)**:
+    -   $H_{computed}$ 由 DataLoader 根据 $P_{fix}, P_{mov}$ 实时计算 (`cv2.findHomography` with RANSAC)。
+    -   利用 $H_{computed}$ 对 image1 进行预对齐 (pre-alignment)，或者直接作为 $T_{0\to1}$ 传入模型。
 
-### 4.3 训练配置
-- **Load Weights**: 加载 Phase 3 最佳 Checkpoint。
-- **Learning Rate**: 降为 Stage 1 的 **1/10** (e.g., $1e-5$)。
-- **Loss Function**: 同 Phase 3。
-  - 对于 $D_{real}$: 计算 PKE Loss (Det + Geo)。注意真实数据没有 GT Keypoints 和 GT H，依靠 PKE 自监督。
-  - 对于 $D_{syn}$: 计算完整 Loss (包括 $l_{des\_gt}$)，作为强约束。
+### 4.3 训练与 Loss (Hybrid Supervision)
+$$L_{real} = L_{det\_pke} + L_{geo\_pke} + L_{des\_total}$$
 
-### 4.4 预期效果
-- **Feature Space**: 描述子对真实纹理更鲁棒。
-- **Keypoint Consistency**: 在真实图像上的关键点提取更纯净，减少背景杂波误检。
+1.  **PKE Detection & Geometric Loss**:
+    -   利用 $H_{computed}$ 在全图范围内挖掘新点，计算 $L_{det}$ 和 $L_{geo}$。
+2.  **Hybrid Descriptor Loss ($L_{des\_total}$)** (核心防过拟合策略):
+    -   **Anchor Loss**: 在人工标注 GT 点 ($P_{fix}, P_{mov}$) 处计算强监督 Loss。保证“基准不飘”。
+    -   **Exploration Loss**: 在 **PKE 挖掘出的所有新点对**上计算自监督 Loss。
+        -   利用 $H_{computed}$ 建立对应关系。
+        -   即使真实数据少，PKE 也能在每张图上挖掘出成百上千个新特征点，极大丰富训练样本，**彻底解决过拟合问题**。
+    -   $$L_{des\_total} = L_{des}(GT) + \lambda \cdot L_{des}(PKE_{mined})$$
+
