@@ -137,18 +137,12 @@ def test_on_real():
     # Matching parameters aligned with train_multimodal_v3.py
     nms_thresh = model_config.get('nms_thresh', 0.01)
     content_thresh = model_config.get('content_thresh', 0.7)
+    geometric_thresh = model_config.get('geometric_thresh', 0.7) # Added from train_multimodal_v3.py
     
-    transform_fix = transforms.Compose([
+    transform = transforms.Compose([
         transforms.ToPILImage(),
         transforms.Resize((512, 512)),
         transforms.ToTensor(),
-    ])
-    
-    transform_mov = transforms.Compose([
-        transforms.ToPILImage(),
-        transforms.Resize((512, 512)),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.5], std=[0.5])
     ])
 
     log_print(f"Starting evaluation on {len(test_set)} samples...")
@@ -166,25 +160,30 @@ def test_on_real():
         elif mode == 'octfa': # (fa, oct, pts_fa, pts_oct, path_fa, path_oct)
             img_mov_raw, img_fix_raw, pts_mov_gt, pts_fix_gt, path_mov, path_fix = raw_data
         
-        # Ensure RGB for transforms
-        if img_fix_raw.ndim == 2: img_fix_raw_rgb = cv2.cvtColor(img_fix_raw, cv2.COLOR_GRAY2RGB)
-        else: img_fix_raw_rgb = img_fix_raw
-        if img_mov_raw.ndim == 2: img_mov_raw_rgb = cv2.cvtColor(img_mov_raw, cv2.COLOR_GRAY2RGB)
-        else: img_mov_raw_rgb = img_mov_raw
+        # Ensure grayscale for model input
+        if img_fix_raw.ndim == 3:
+            img_fix_gray = cv2.cvtColor(img_fix_raw, cv2.COLOR_RGB2GRAY) if img_fix_raw.shape[2] == 3 else img_fix_raw.squeeze()
+        else:
+            img_fix_gray = img_fix_raw
+
+        if img_mov_raw.ndim == 3:
+            img_mov_gray = cv2.cvtColor(img_mov_raw, cv2.COLOR_RGB2GRAY) if img_mov_raw.shape[2] == 3 else img_mov_raw.squeeze()
+        else:
+            img_mov_gray = img_mov_raw
         
         sample_id = os.path.basename(path_fix).split('.')[0]
         
-        # Prepare inputs for model
-        img0_tensor = transform_fix(img_fix_raw_rgb).unsqueeze(0).to(device)
-        img1_tensor = transform_mov(img_mov_raw_rgb).unsqueeze(0).to(device)
+        # Prepare inputs for model (Ensuring 1-channel grayscale)
+        img0_tensor = transform(img_fix_gray).unsqueeze(0).to(device)
+        img1_tensor = transform(img_mov_gray).unsqueeze(0).to(device)
         
         with torch.no_grad():
-            # Forward flow aligned with train_multimodal_v3.py (no vessel masks)
+            # Forward flow aligned with train_multimodal_v3.py
             det_fix, desc_fix = model.network(img0_tensor)
             det_mov, desc_mov = model.network(img1_tensor)
             
-            # Valid mask to avoid border artifacts
-            valid_mask = (img1_tensor > -0.9).float()
+            # Valid mask to avoid border artifacts (Align with train_multimodal_v3.py: > 0.05)
+            valid_mask = (img1_tensor > 0.05).float()
             valid_mask = -F.max_pool2d(-valid_mask, kernel_size=5, stride=1, padding=2)
             det_mov_masked = det_mov * valid_mask
             
@@ -247,14 +246,21 @@ def test_on_real():
             sample_save_dir = os.path.join(output_root, sample_id)
             os.makedirs(sample_save_dir, exist_ok=True)
             
+            # Save raw fix and moving images
+            cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_fix.png'), img_fix_raw)
+            cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_moving.png'), img_mov_raw)
+
             if len(mkpts0) >= 4:
-                H_pred, _ = cv2.findHomography(mkpts1, mkpts0, cv2.RANSAC, 5.0)
+                H_pred, _ = cv2.findHomography(mkpts1, mkpts0, cv2.RANSAC, geometric_thresh)
                 if H_pred is not None:
                     img_m_gray = cv2.cvtColor(img_mov_raw, cv2.COLOR_RGB2GRAY) if img_mov_raw.ndim == 3 else img_mov_raw
                     img_f_gray = cv2.cvtColor(img_fix_raw, cv2.COLOR_RGB2GRAY) if img_fix_raw.ndim == 3 else img_fix_raw
                     reg_img = cv2.warpPerspective(img_m_gray, H_pred, (w_f, h_f))
-                    cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_registered.png'), reg_img)
-                    cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_checkerboard.png'), compute_checkerboard(img_f_gray, reg_img))
+                    cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_moving_result.png'), reg_img)
+                    
+                    # Compute checkerboard (Align with train_multimodal_v3.py: 4x4)
+                    checker = compute_checkerboard(img_f_gray, reg_img, n_grid=4)
+                    cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_checkerboard.png'), checker)
             
             draw_matches(img_fix_raw, kps_f_orig, img_mov_raw, kps_m_orig, good_matches, 
                          os.path.join(sample_save_dir, f'{sample_id}_matches.png'))
