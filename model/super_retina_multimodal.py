@@ -210,9 +210,12 @@ class SuperRetinaMultimodal(nn.Module):
     def descriptor_loss_warmup(self, label_point_positions, descriptor_pred_fix,
                                descriptor_pred_mov, H_0to1, max_points_per_img=512):
         """
-        描述子热身阶段的损失:
+        描述子热身阶段的损失 (改进版: 跨图像负样本采样):
         使用数据集中提供的真值仿射矩阵 H_0to1, 将 CF 上的 vessel_keypoints
         映射到 moving 图像上, 直接构造跨模态正样本对, 再进行三元组损失。
+        
+        改进: 负样本不仅来自同一张 moving 图像，还包括 batch 内其他图像的点。
+        这迫使模型产生全局可区分的描述子，防止描述子坍塌。
         """
         device = descriptor_pred_fix.device
         B, _, H, W = label_point_positions.shape
@@ -227,16 +230,19 @@ class SuperRetinaMultimodal(nn.Module):
             H_0to1 = H_0to1.unsqueeze(0)
         H_0to1 = H_0to1.to(device)
 
-        anchor_list = []
-        positive_list = []
-        negatives_hard_list = []
-        negatives_random_list = []
+        # ===== 第一阶段: 收集所有样本的描述子 =====
+        all_desc_fix = []  # 每个样本的 fix 描述子列表 [N_b, D]
+        all_desc_mov = []  # 每个样本的 mov 描述子列表 [N_b, D]
+        sample_sizes = []  # 每个样本的点数
 
         for b in range(B):
             # 取出该样本的关键点掩码 [H, W]
             kp_mask = (label_point_positions[b, 0] > 0.5)
             ys, xs = torch.where(kp_mask)
             if ys.numel() == 0:
+                all_desc_fix.append(None)
+                all_desc_mov.append(None)
+                sample_sizes.append(0)
                 continue
 
             # 随机下采样, 避免显存过大
@@ -248,7 +254,7 @@ class SuperRetinaMultimodal(nn.Module):
             # 构造齐次坐标并应用 H_0to1, 得到 moving 图像上的对应点
             ones = torch.ones_like(xs, dtype=torch.float32, device=device)
             pts_fix = torch.stack([xs.float(), ys.float(), ones], dim=0)  # [3, N]
-            H_mat = H_0to1[b]  # [3, 3] 真值仿射矩阵 (注意不要覆盖图像高度 H)
+            H_mat = H_0to1[b]  # [3, 3] 真值仿射矩阵
             pts_mov = H_mat @ pts_fix  # [3, N]
 
             # 归一化 (一般仿射, pts_mov[2]≈1)
@@ -258,6 +264,9 @@ class SuperRetinaMultimodal(nn.Module):
             # 只保留在图像内部的点
             valid = (xs_mov >= 0) & (xs_mov <= (W - 1)) & (ys_mov >= 0) & (ys_mov <= (H - 1))
             if valid.sum() == 0:
+                all_desc_fix.append(None)
+                all_desc_mov.append(None)
+                sample_sizes.append(0)
                 continue
 
             xs_fix_valid = xs[valid]
@@ -274,39 +283,79 @@ class SuperRetinaMultimodal(nn.Module):
             desc_mov = sample_keypoint_desc(kps_mov[None], descriptor_pred_mov[b:b+1], s=self.scale)[0]   # [C, N]
 
             n = desc_fix.shape[1]
-            if n == 0:
+            if n == 0 or n > 1000:
+                all_desc_fix.append(None)
+                all_desc_mov.append(None)
+                sample_sizes.append(0)
                 continue
-            if n > 1000:
-                # 和原实现保持一致, 防止极端情况下显存溢出
-                return torch.tensor(0., requires_grad=True, device=device), False
 
-            # 负样本采样 (与原 descriptor_loss 一致)
-            desc_fix_view = desc_fix.view(D, -1, 1)
-            desc_mov_view = desc_mov.view(D, 1, -1)
-            ar = torch.arange(n, device=device)
+            all_desc_fix.append(desc_fix.permute(1, 0))  # [N, D]
+            all_desc_mov.append(desc_mov.permute(1, 0))  # [N, D]
+            sample_sizes.append(n)
 
-            # 随机负样本
-            neg_index2 = []
-            if n == 1:
-                neg_index2.append(0)
-            else:
-                for j in range(n):
-                    t = j
-                    while t == j:
-                        t = random.randint(0, n - 1)
-                    neg_index2.append(t)
-            neg_index2 = torch.tensor(neg_index2, dtype=torch.long, device=device)
+        # ===== 第二阶段: 构建跨图像负样本池 =====
+        # 将所有有效的 moving 描述子拼接成一个大池子
+        valid_mov_list = [d for d in all_desc_mov if d is not None]
+        if len(valid_mov_list) == 0:
+            return torch.tensor(0., requires_grad=True, device=device), False
+        
+        all_mov_pool = torch.cat(valid_mov_list, dim=0)  # [Total_N, D]
+        total_pool_size = all_mov_pool.shape[0]
 
-            # 最难负样本
+        # ===== 第三阶段: 为每个 anchor 采样负样本 =====
+        anchor_list = []
+        positive_list = []
+        negatives_hard_list = []
+        negatives_cross_list = []  # 跨图像负样本
+
+        # 计算每个样本在 pool 中的起始索引
+        pool_offsets = [0]
+        for size in sample_sizes:
+            pool_offsets.append(pool_offsets[-1] + size)
+
+        for b in range(B):
+            if all_desc_fix[b] is None:
+                continue
+            
+            desc_fix = all_desc_fix[b]  # [N, D]
+            desc_mov = all_desc_mov[b]  # [N, D]
+            n = desc_fix.shape[0]
+            
+            # 当前样本在 pool 中的范围
+            start_idx = pool_offsets[b]
+            end_idx = pool_offsets[b + 1]
+            
+            # ----- 同图像内硬负样本 (保留原有逻辑) -----
             with torch.no_grad():
-                dis = torch.norm(desc_fix_view - desc_mov_view, dim=0)  # [N, N]
+                dis = torch.cdist(desc_fix, desc_mov, p=2)  # [N, N]
+                ar = torch.arange(n, device=device)
                 dis[ar, ar] = dis.max() + 1  # 排除正样本本身
-                neg_index1 = dis.argmin(dim=1)
+                neg_index_hard = dis.argmin(dim=1)
+            
+            # ----- 跨图像负样本 (从整个 pool 中采样，排除当前样本) -----
+            # 为每个 anchor 随机采样一个来自其他图像的负样本
+            neg_index_cross = []
+            for j in range(n):
+                # 从 pool 中排除当前样本的范围
+                if total_pool_size == n:
+                    # 只有一个样本，退回到同图像采样
+                    neg_idx = random.randint(0, n - 1)
+                    if neg_idx == j:
+                        neg_idx = (neg_idx + 1) % n
+                    neg_index_cross.append(neg_idx + start_idx)
+                else:
+                    # 从其他样本中采样
+                    while True:
+                        idx = random.randint(0, total_pool_size - 1)
+                        if idx < start_idx or idx >= end_idx:
+                            break
+                    neg_index_cross.append(idx)
+            neg_index_cross = torch.tensor(neg_index_cross, dtype=torch.long, device=device)
 
-            anchor_list.append(desc_fix.permute(1, 0))                        # [N, D]
-            positive_list.append(desc_mov.permute(1, 0))                      # [N, D]
-            negatives_hard_list.append(desc_mov[:, neg_index1.long()].permute(1, 0))   # [N, D]
-            negatives_random_list.append(desc_mov[:, neg_index2.long()].permute(1, 0)) # [N, D]
+            anchor_list.append(desc_fix)
+            positive_list.append(desc_mov)
+            negatives_hard_list.append(desc_mov[neg_index_hard])
+            negatives_cross_list.append(all_mov_pool[neg_index_cross])
 
         if len(anchor_list) == 0:
             return torch.tensor(0., requires_grad=True, device=device), False
@@ -314,15 +363,16 @@ class SuperRetinaMultimodal(nn.Module):
         anchor = torch.cat(anchor_list, dim=0)
         positive = torch.cat(positive_list, dim=0)
         negatives_hard = torch.cat(negatives_hard_list, dim=0)
-        negatives_random = torch.cat(negatives_random_list, dim=0)
+        negatives_cross = torch.cat(negatives_cross_list, dim=0)
 
-        # 归一化后使用同一三元组损失
+        # 归一化后使用三元组损失
         anchor = F.normalize(anchor, dim=-1, p=2)
         positive = F.normalize(positive, dim=-1, p=2)
         negatives_hard = F.normalize(negatives_hard, dim=-1, p=2)
-        negatives_random = F.normalize(negatives_random, dim=-1, p=2)
+        negatives_cross = F.normalize(negatives_cross, dim=-1, p=2)
 
-        loss = triplet_margin_loss_gor(anchor, positive, negatives_hard, negatives_random, margin=0.8)
+        # 使用跨图像负样本替换原来的随机负样本，增强全局判别力
+        loss = triplet_margin_loss_gor(anchor, positive, negatives_hard, negatives_cross, margin=0.8)
         return loss, True
     
     def forward(self, fix_img, mov_img, label_point_positions=None, value_map=None, learn_index=None,
