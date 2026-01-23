@@ -128,6 +128,10 @@ def validate(model, val_loader, device, epoch, save_dir, log_file, train_config,
             img1 = data['image1'].to(device)
             img1_origin = data['image1_origin'].to(device)
             
+            # ===== 在验证阶段也应用随机增强 =====
+            img0 = apply_random_augmentation(img0)
+            img1 = apply_random_augmentation(img1)
+            
             # Extract sample name
             pair_names = data.get('pair_names', [['sample_unknown']])[0]
             if isinstance(pair_names, (list, tuple)):
@@ -213,6 +217,10 @@ def validate(model, val_loader, device, epoch, save_dir, log_file, train_config,
                 fix_np = (img0[b, 0].cpu().numpy() * 255).astype(np.uint8)
                 mov_in_np = (img1_origin[b, 0].cpu().numpy() * 255).astype(np.uint8)
                 mov_aff_np = (img1[b, 0].cpu().numpy() * 255).astype(np.uint8)
+                
+                # 保存增强后的输入图
+                cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_fix_augmented.png'), fix_np)
+                cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_moving_warped_augmented.png'), mov_aff_np)
                 
                 # ===== 新增：可视化从血管分割图中提取的关键点 =====
                 if 'vessel_mask0' in data:
