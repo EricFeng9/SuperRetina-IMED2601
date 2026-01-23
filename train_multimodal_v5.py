@@ -27,7 +27,7 @@ from common.vessel_keypoint_extractor import extract_vessel_keypoints, extract_v
 
 def apply_random_augmentation(img, keypoints=None):
     """
-    Apply random Gamma, Contrast, and Brightness augmentation with high intensity.
+    Apply random Gamma, Contrast, and Brightness augmentation with moderate intensity.
     Args:
         img: Tensor [B, C, H, W], range [0, 1]
     Returns:
@@ -37,22 +37,22 @@ def apply_random_augmentation(img, keypoints=None):
     device = img.device
     
     # 1. Random Gamma
-    # Widened Gamma range: [0.4, 3.0]
-    if random.random() < 0.8: # Increased chance to 80%
-        gamma = random.uniform(0.4, 3.0)
+    # Moderate Gamma range: [0.7, 1.5]
+    if random.random() < 0.7:
+        gamma = random.uniform(0.7, 1.5)
         img = img.pow(gamma)
         
     # 2. Random Contrast
-    # Widened Factor range: [0.3, 2.0]
-    if random.random() < 0.8:
-        contrast_factor = random.uniform(0.3, 2.0)
+    # Moderate Factor range: [0.7, 1.3]
+    if random.random() < 0.7:
+        contrast_factor = random.uniform(0.7, 1.3)
         mean = img.mean(dim=(2, 3), keepdim=True)
         img = (img - mean) * contrast_factor + mean
         
     # 3. Random Brightness
-    # Widened Offset range: [-0.4, 0.4]
-    if random.random() < 0.8:
-        brightness_offset = random.uniform(-0.4, 0.4)
+    # Moderate Offset range: [-0.15, 0.15]
+    if random.random() < 0.7:
+        brightness_offset = random.uniform(-0.15, 0.15)
         img = img + brightness_offset
         
     # Clip to valid range [0, 1]
@@ -127,6 +127,10 @@ def validate(model, val_loader, device, epoch, save_dir, log_file, train_config,
             img0 = data['image0'].to(device)
             img1 = data['image1'].to(device)
             img1_origin = data['image1_origin'].to(device)
+            
+            # ===== 保存原始图像（增强之前）=====
+            img0_raw = img0.clone()
+            img1_raw = img1.clone()
             
             # ===== 在验证阶段也应用随机增强 =====
             img0 = apply_random_augmentation(img0)
@@ -214,13 +218,18 @@ def validate(model, val_loader, device, epoch, save_dir, log_file, train_config,
                 sample_save_dir = os.path.join(epoch_save_dir, sample_id)
                 os.makedirs(sample_save_dir, exist_ok=True)
                 
-                fix_np = (img0[b, 0].cpu().numpy() * 255).astype(np.uint8)
+                # 原始图像（未增强）
+                fix_raw_np = (img0_raw[b, 0].cpu().numpy() * 255).astype(np.uint8)
+                mov_aff_raw_np = (img1_raw[b, 0].cpu().numpy() * 255).astype(np.uint8)
                 mov_in_np = (img1_origin[b, 0].cpu().numpy() * 255).astype(np.uint8)
-                mov_aff_np = (img1[b, 0].cpu().numpy() * 255).astype(np.uint8)
+                
+                # 增强后的图像
+                fix_aug_np = (img0[b, 0].cpu().numpy() * 255).astype(np.uint8)
+                mov_aff_aug_np = (img1[b, 0].cpu().numpy() * 255).astype(np.uint8)
                 
                 # 保存增强后的输入图
-                cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_fix_augmented.png'), fix_np)
-                cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_moving_warped_augmented.png'), mov_aff_np)
+                cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_fix_augmented.png'), fix_aug_np)
+                cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_moving_warped_augmented.png'), mov_aff_aug_np)
                 
                 # ===== 新增：可视化从血管分割图中提取的关键点 =====
                 if 'vessel_mask0' in data:
@@ -235,8 +244,8 @@ def validate(model, val_loader, device, epoch, save_dir, log_file, train_config,
                         except:
                             vessel_keypoints_np = (vessel_mask_np > 127).astype(np.float32)
                     
-                    # 在固定图上绘制提取的关键点 (GT on fix)
-                    vessel_kps_vis = cv2.cvtColor(fix_np, cv2.COLOR_GRAY2BGR)
+                    # 在固定图上绘制提取的关键点 (GT on fix) - 使用原始图
+                    vessel_kps_vis = cv2.cvtColor(fix_raw_np, cv2.COLOR_GRAY2BGR)
                     keypoint_coords = np.column_stack(np.where(vessel_keypoints_np > 0.5))
                     for coord in keypoint_coords:
                         cv2.circle(vessel_kps_vis, (int(coord[1]), int(coord[0])), 4, (0, 0, 255), -1)  # 红色点
@@ -254,41 +263,41 @@ def validate(model, val_loader, device, epoch, save_dir, log_file, train_config,
                         xs_mov = pts_mov[0] / (pts_mov[2] + 1e-6)
                         ys_mov = pts_mov[1] / (pts_mov[2] + 1e-6)
 
-                        h_img, w_img = mov_aff_np.shape
+                        h_img, w_img = mov_aff_aug_np.shape
                         valid = (xs_mov >= 0) & (xs_mov < w_img) & (ys_mov >= 0) & (ys_mov < h_img)
                         xs_mov = xs_mov[valid]
                         ys_mov = ys_mov[valid]
 
-                        mov_gt_kps_vis = cv2.cvtColor(mov_aff_np, cv2.COLOR_GRAY2BGR)
+                        mov_gt_kps_vis = cv2.cvtColor(mov_aff_aug_np, cv2.COLOR_GRAY2BGR)
                         for x_m, y_m in zip(xs_mov, ys_mov):
                             cv2.circle(mov_gt_kps_vis, (int(x_m), int(y_m)), 4, (0, 0, 255), -1)  # 红色 GT 点
                         cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_affined_moving_gt_kps.png'), mov_gt_kps_vis)
                 
-                # 绘制关键点
-                fix_with_kps = cv2.cvtColor(fix_np, cv2.COLOR_GRAY2BGR)
+                # 绘制关键点 - 使用增强后的图像
+                fix_with_kps = cv2.cvtColor(fix_aug_np, cv2.COLOR_GRAY2BGR)
                 for kp in kps_fix:
                     cv2.circle(fix_with_kps, (int(kp[0]), int(kp[1])), 3, (0, 255, 0), -1)
                 
-                mov_aff_with_kps = cv2.cvtColor(mov_aff_np, cv2.COLOR_GRAY2BGR)
+                mov_aff_with_kps = cv2.cvtColor(mov_aff_aug_np, cv2.COLOR_GRAY2BGR)
                 for kp in kps_mov:
                     cv2.circle(mov_aff_with_kps, (int(kp[0]), int(kp[1])), 3, (0, 255, 0), -1)
 
-                # 原始图像可视化：fix / moving_origin / moving_warped
-                cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_fix_raw.png'), fix_np)
+                # 原始图像可视化：fix / moving_origin / moving_warped（未增强的）
+                cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_fix_raw.png'), fix_raw_np)
                 cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_moving_origin_raw.png'), mov_in_np)
-                cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_moving_warped_raw.png'), mov_aff_np)
+                cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_moving_warped_raw.png'), mov_aff_raw_np)
 
                 cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_fixed_kps.png'), fix_with_kps)
                 cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_affined_moving_kps.png'), mov_aff_with_kps)
 
-                reg_np = img_reg.astype(np.uint8) if img_reg is not None else fix_np
+                reg_np = img_reg.astype(np.uint8) if img_reg is not None else fix_raw_np
                 cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_registered.png'), reg_np)
 
                 # ===== 新增：registered 与 fix 的 4x4 棋盘格拼接图 =====
-                h_img, w_img = fix_np.shape
+                h_img, w_img = fix_raw_np.shape
                 tile_h = h_img // 4
                 tile_w = w_img // 4
-                checker = np.zeros_like(fix_np)
+                checker = np.zeros_like(fix_raw_np)
                 for i in range(4):
                     for j in range(4):
                         y0 = i * tile_h
@@ -296,13 +305,13 @@ def validate(model, val_loader, device, epoch, save_dir, log_file, train_config,
                         x0 = j * tile_w
                         x1 = w_img if j == 3 else (j + 1) * tile_w
                         if (i + j) % 2 == 0:
-                            checker[y0:y1, x0:x1] = fix_np[y0:y1, x0:x1]
+                            checker[y0:y1, x0:x1] = fix_raw_np[y0:y1, x0:x1]
                         else:
                             checker[y0:y1, x0:x1] = reg_np[y0:y1, x0:x1]
                 cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_fix_registered_checkerboard.png'), checker)
                 
-                # 绘制匹配关系
-                draw_matches(fix_np, kps_fix.cpu().numpy(), mov_aff_np, kps_mov.cpu().numpy(), good, 
+                # 绘制匹配关系 - 使用增强后的图像
+                draw_matches(fix_aug_np, kps_fix.cpu().numpy(), mov_aff_aug_np, kps_mov.cpu().numpy(), good, 
                              os.path.join(sample_save_dir, f'{sample_id}_matches.png'))
 
     avg_mse = np.mean(mse_list) if len(mse_list) > 0 else float('inf')
