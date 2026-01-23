@@ -2,26 +2,88 @@ import torch
 import os
 import sys
 import yaml
-import shutil
 import cv2
 import numpy as np
-import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 import torch.optim as optim
 from tqdm import tqdm
 import argparse
-import random
 
 # 添加本地模块路径
 sys.path.append(os.getcwd())
 
-# 使用新数据集脚本
-from dataset.FIVES_extract_v2.FIVES_extract_v2 import MultiModalDataset
-from model.super_retina_multimodal import SuperRetinaMultimodal
-from common.train_util import value_map_load, value_map_save, affine_images
-from common.common_util import nms, sample_keypoint_desc
-from common.vessel_keypoint_extractor import extract_vessel_keypoints, extract_vessel_keypoints_fallback
+# 导入真实数据集
+from dataset.operation_pre_filtered_octfa.operation_pre_filtered_octfa_dataset import OCTFADataset
+from dataset.operation_pre_filtered_cfoct.operation_pre_filtered_cfoct_dataset import CFOCTDataset
+from dataset.operation_pre_filtered_cffa.operation_pre_filtered_cffa_dataset import CFFADataset
+from dataset.CF_OCTA_v2_repaired.cf_octa_v2_repaired_dataset import CFOCTADataset
 
+from model.super_retina_multimodal import SuperRetinaMultimodal
+from common.train_util import value_map_load, value_map_save
+from common.common_util import nms, sample_keypoint_desc
+
+
+class RealDatasetWrapper(torch.utils.data.Dataset):
+    """
+    真实数据集包装器 - 将真实数据集的输出格式统一成训练所需的格式
+    真实数据有 GT 关键点和 H_computed，可以用于完整的 PKE 训练
+    """
+    def __init__(self, real_dataset):
+        self.dataset = real_dataset
+    
+    def __len__(self):
+        return len(self.dataset)
+    
+    def __getitem__(self, idx):
+        fix, moving_orig, moving_gt, fix_path, moving_path, T_0to1 = self.dataset[idx]
+        
+        # 获取原始关键点 (用于 Anchor Loss)
+        raw_data = self.dataset.get_raw_sample(idx)
+        # raw_data: (img_fix, img_mov, pts_fix, pts_mov, path_fix, path_mov)
+        pts_fix = raw_data[2]  # numpy array [N, 2]
+        pts_mov = raw_data[3]  # numpy array [N, 2]
+        
+        # 转换为灰度图 (取RGB的第一个通道)
+        if fix.shape[0] == 3:
+            fix = fix[0:1]  # [1, H, W]
+        if moving_orig.shape[0] == 3:
+            moving_orig = moving_orig[0:1]
+        if moving_gt.shape[0] == 3:
+            moving_gt = moving_gt[0:1]
+        
+        # 归一化到 [0, 1]（真实数据集返回的是 [-1, 1]）
+        moving_orig = (moving_orig + 1) / 2
+        moving_gt = (moving_gt + 1) / 2
+        
+        # 将关键点转换为热力图格式 (512x512 -> 64x64)
+        H, W = 512, 512
+        Hc, Wc = H // 8, W // 8
+        
+        # 创建关键点热力图
+        keypoints_heatmap = np.zeros((Hc, Wc), dtype=np.float32)
+        
+        # 将关键点缩放到 64x64 尺度
+        pts_fix_scaled = pts_fix / 8.0  # 512 -> 64
+        
+        for pt in pts_fix_scaled:
+            x, y = int(pt[0]), int(pt[1])
+            if 0 <= x < Wc and 0 <= y < Hc:
+                keypoints_heatmap[y, x] = 1.0
+        
+        # 转换为 tensor
+        keypoints_tensor = torch.from_numpy(keypoints_heatmap).float()
+        
+        return {
+            'image0': fix,
+            'image1': moving_gt,
+            'image1_origin': moving_orig,
+            'T_0to1': T_0to1,
+            'gt_keypoints_fix': torch.from_numpy(pts_fix).float(),  # [N, 2] 原始尺度
+            'gt_keypoints_mov': torch.from_numpy(pts_mov).float(),  # [N, 2] 原始尺度
+            'keypoints_heatmap': keypoints_tensor,  # [64, 64] 用于可视化
+            'pair_names': os.path.basename(fix_path),  # 修改为单个字符串，让 DataLoader 处理成 [str, str...]
+            'is_real': True  # 标记为真实数据
+        }
 
 
 def draw_matches(img1, kps1, img2, kps2, matches, save_path):
@@ -42,6 +104,7 @@ def draw_matches(img1, kps1, img2, kps2, matches, save_path):
     
     cv2.imwrite(save_path, out_img)
 
+
 def validate(model, val_loader, device, epoch, save_dir, log_file, train_config, val_cache=None):
     """
     验证函数:评估模型在跨模态配准任务上的 MSE 表现
@@ -51,8 +114,8 @@ def validate(model, val_loader, device, epoch, save_dir, log_file, train_config,
     
     # 从配置中统一读取阈值
     nms_thresh = train_config.get('nms_thresh', 0.01)
-    content_thresh = train_config.get('content_thresh', 0.7) # Lowe's Ratio
-    geometric_thresh = train_config.get('geometric_thresh', 0.7) # RANSAC re-projection error
+    content_thresh = train_config.get('content_thresh', 0.7)
+    geometric_thresh = train_config.get('geometric_thresh', 0.7)
     
     # Initialize cache if needed
     if val_cache is None:
@@ -69,54 +132,47 @@ def validate(model, val_loader, device, epoch, save_dir, log_file, train_config,
     
     # Fill cache if empty (First run logic)
     if len(val_cache) == 0:
-        print("Initializing Validation Set with Fixed Seed and 10 Samples...")
+        print("初始化验证集: 使用固定种子选取10个样本...")
         g = torch.Generator()
-        g.manual_seed(2024) # Fixed seed for reproducibility
+        g.manual_seed(2024)
         
         dataset_len = len(val_loader.dataset)
         indices = torch.randperm(dataset_len, generator=g).tolist()
         
-        # Take 10 samples or all if less than 10
         selected_indices = set(indices[:10] if dataset_len >= 10 else indices)
         
-        # Fetch specific samples
-        for batch_idx, data in enumerate(tqdm(val_loader, desc="Caching Val Data")):
+        for batch_idx, data in enumerate(tqdm(val_loader, desc="缓存验证数据")):
             if batch_idx in selected_indices:
                 val_cache.append(data)
                 if len(val_cache) >= len(selected_indices):
                     break
     
     with torch.no_grad():
-        for data in tqdm(val_cache, desc=f"Val Epoch {epoch}"):
+        for data in tqdm(val_cache, desc=f"验证 Epoch {epoch}"):
             img0 = data['image0'].to(device)
             img1 = data['image1'].to(device)
             img1_origin = data['image1_origin'].to(device)
             
-            # Extract sample name
-            pair_names = data.get('pair_names', [['sample_unknown']])[0]
+            pair_names = data.get('pair_names', 'sample_unknown')
             if isinstance(pair_names, (list, tuple)):
-                sample_name = pair_names[0]
+                sample_name = str(pair_names[0])
             else:
-                sample_name = pair_names
+                sample_name = str(pair_names)
             
-            sample_id = os.path.splitext(os.path.basename(str(sample_name)))[0]
+            sample_id = os.path.splitext(os.path.basename(sample_name))[0]
             
-            # 提取跨模态特征
             det_fix, desc_fix = model.network(img0)
             det_mov, desc_mov = model.network(img1)
             
             for b in range(img0.shape[0]):
-                # 有效区域屏蔽,防止边缘伪影干扰关键点提取
                 valid_mask = (img1[b:b+1] > 0.05).float()
                 import torch.nn.functional as F
                 valid_mask = -F.max_pool2d(-valid_mask, kernel_size=5, stride=1, padding=2)
                 det_mov_masked = det_mov[b:b+1] * valid_mask
                 
-                # 提取关键点
                 kps_fix = nms(det_fix[b:b+1], nms_thresh=nms_thresh, nms_size=5)[0]
                 kps_mov = nms(det_mov_masked, nms_thresh=nms_thresh, nms_size=5)[0]
                 
-                # 兜底策略:如果关键点太少,强制取响应最高的前100个点
                 if len(kps_fix) < 10:
                      flat_det = det_fix[b, 0].view(-1)
                      _, idx = torch.topk(flat_det, min(100, flat_det.numel()))
@@ -132,12 +188,11 @@ def validate(model, val_loader, device, epoch, save_dir, log_file, train_config,
                         x = idx % det_mov.shape[3]
                         kps_mov = torch.stack([x, y], dim=1).float()
                 
-                mse = 10000.0 # 默认较大值表示配准失败
+                mse = 10000.0
                 img_reg = None
                 good = []
 
                 if len(kps_fix) >= 4 and len(kps_mov) >= 4:
-                    # 采样描述子并进行特征匹配
                     desc_fix_samp = sample_keypoint_desc(kps_fix[None], desc_fix[b:b+1], s=8)[0]
                     desc_mov_samp = sample_keypoint_desc(kps_mov[None], desc_mov[b:b+1], s=8)[0]
                     
@@ -147,7 +202,6 @@ def validate(model, val_loader, device, epoch, save_dir, log_file, train_config,
                     bf = cv2.BFMatcher()
                     matches = bf.knnMatch(d1, d2, k=2)
                     
-                    # 使用配置中的 content_thresh 作为 Ratio Test 阈值
                     for m, n in matches:
                         if m.distance < content_thresh * n.distance:
                             good.append(m)
@@ -156,7 +210,6 @@ def validate(model, val_loader, device, epoch, save_dir, log_file, train_config,
                     src_pts = np.float32([kps_fix[m.queryIdx].cpu().numpy() for m in good]).reshape(-1, 1, 2)
                     dst_pts = np.float32([kps_mov[m.trainIdx].cpu().numpy() for m in good]).reshape(-1, 1, 2)
                     
-                    # 利用配置中的 geometric_thresh 作为 RANSAC 容忍误差
                     M, mask = cv2.findHomography(dst_pts, src_pts, cv2.RANSAC, geometric_thresh)
                     
                     if M is not None:
@@ -164,7 +217,6 @@ def validate(model, val_loader, device, epoch, save_dir, log_file, train_config,
                         h, w = img_warped_np.shape
                         img_reg = cv2.warpPerspective(img_warped_np, M, (w, h))
                         
-                        # 计算与 Ground Truth (原始对齐图像) 的均方误差
                         img_gt_np = img1_origin[b, 0].cpu().numpy() * 255.0
                         mse = np.mean((img_reg - img_gt_np) ** 2)
                 
@@ -178,48 +230,6 @@ def validate(model, val_loader, device, epoch, save_dir, log_file, train_config,
                 mov_in_np = (img1_origin[b, 0].cpu().numpy() * 255).astype(np.uint8)
                 mov_aff_np = (img1[b, 0].cpu().numpy() * 255).astype(np.uint8)
                 
-                # ===== 新增：可视化从血管分割图中提取的关键点 =====
-                if 'vessel_mask0' in data:
-                    vessel_mask_np = (data['vessel_mask0'][b, 0].cpu().numpy() * 255).astype(np.uint8)
-                    
-                    # 提取关键点
-                    try:
-                        vessel_keypoints_np = extract_vessel_keypoints(vessel_mask_np, min_distance=8)
-                    except:
-                        try:
-                            vessel_keypoints_np = extract_vessel_keypoints_fallback(vessel_mask_np, min_distance=8)
-                        except:
-                            vessel_keypoints_np = (vessel_mask_np > 127).astype(np.float32)
-                    
-                    # 在固定图上绘制提取的关键点 (GT on fix)
-                    vessel_kps_vis = cv2.cvtColor(fix_np, cv2.COLOR_GRAY2BGR)
-                    keypoint_coords = np.column_stack(np.where(vessel_keypoints_np > 0.5))
-                    for coord in keypoint_coords:
-                        cv2.circle(vessel_kps_vis, (int(coord[1]), int(coord[0])), 4, (0, 0, 255), -1)  # 红色点
-                    cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_vessel_keypoints_extracted.png'), vessel_kps_vis)
-
-                    # ===== 新增：在已仿射的 moving 图像上绘制 GT 关键点 =====
-                    if 'T_0to1' in data and keypoint_coords.size > 0:
-                        H = data['T_0to1'][b].cpu().numpy()  # 3x3
-                        pts = np.stack([
-                            keypoint_coords[:, 1].astype(np.float32),  # x
-                            keypoint_coords[:, 0].astype(np.float32),  # y
-                            np.ones(len(keypoint_coords), dtype=np.float32)
-                        ], axis=0)  # [3, N]
-                        pts_mov = H @ pts  # [3, N]
-                        xs_mov = pts_mov[0] / (pts_mov[2] + 1e-6)
-                        ys_mov = pts_mov[1] / (pts_mov[2] + 1e-6)
-
-                        h_img, w_img = mov_aff_np.shape
-                        valid = (xs_mov >= 0) & (xs_mov < w_img) & (ys_mov >= 0) & (ys_mov < h_img)
-                        xs_mov = xs_mov[valid]
-                        ys_mov = ys_mov[valid]
-
-                        mov_gt_kps_vis = cv2.cvtColor(mov_aff_np, cv2.COLOR_GRAY2BGR)
-                        for x_m, y_m in zip(xs_mov, ys_mov):
-                            cv2.circle(mov_gt_kps_vis, (int(x_m), int(y_m)), 4, (0, 0, 255), -1)  # 红色 GT 点
-                        cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_affined_moving_gt_kps.png'), mov_gt_kps_vis)
-                
                 # 绘制关键点
                 fix_with_kps = cv2.cvtColor(fix_np, cv2.COLOR_GRAY2BGR)
                 for kp in kps_fix:
@@ -229,7 +239,6 @@ def validate(model, val_loader, device, epoch, save_dir, log_file, train_config,
                 for kp in kps_mov:
                     cv2.circle(mov_aff_with_kps, (int(kp[0]), int(kp[1])), 3, (0, 255, 0), -1)
 
-                # 原始图像可视化：fix / moving_origin / moving_warped
                 cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_fix_raw.png'), fix_np)
                 cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_moving_origin_raw.png'), mov_in_np)
                 cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_moving_warped_raw.png'), mov_aff_np)
@@ -240,7 +249,7 @@ def validate(model, val_loader, device, epoch, save_dir, log_file, train_config,
                 reg_np = img_reg.astype(np.uint8) if img_reg is not None else fix_np
                 cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_registered.png'), reg_np)
 
-                # ===== 新增：registered 与 fix 的 4x4 棋盘格拼接图 =====
+                # 棋盘格拼接图
                 h_img, w_img = fix_np.shape
                 tile_h = h_img // 4
                 tile_w = w_img // 4
@@ -257,7 +266,6 @@ def validate(model, val_loader, device, epoch, save_dir, log_file, train_config,
                             checker[y0:y1, x0:x1] = reg_np[y0:y1, x0:x1]
                 cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_fix_registered_checkerboard.png'), checker)
                 
-                # 绘制匹配关系
                 draw_matches(fix_np, kps_fix.cpu().numpy(), mov_aff_np, kps_mov.cpu().numpy(), good, 
                              os.path.join(sample_save_dir, f'{sample_id}_matches.png'))
 
@@ -265,30 +273,33 @@ def validate(model, val_loader, device, epoch, save_dir, log_file, train_config,
     log_f.write(f'AVERAGE MSE: {avg_mse:.4f}\n')
     log_f.close()
     
-    print(f'Validation Epoch {epoch} Finished. Avg MSE: {avg_mse:.4f}')
+    print(f'验证 Epoch {epoch} 完成. 平均 MSE: {avg_mse:.4f}')
     return avg_mse, val_cache
 
-def train_multimodal():
+
+def train_phase4():
     """
-    多模态训练主流程 - 使用新数据集和三阶段课程学习
+    阶段 4：全量真实数据 PKE 微调
+    直接使用真实数据进行完整的 Phase 3 PKE 训练
+    利用真实数据中的 GT 关键点和计算出的 H_computed 进行监督
     """
-    # 加载配置
     config_path = './config/train_multimodal.yaml'
     if not os.path.exists(config_path):
-        raise FileNotFoundError(f"Config not found: {config_path}")
+        raise FileNotFoundError(f"配置文件未找到: {config_path}")
         
     with open(config_path) as f:
         config = yaml.safe_load(f)
 
-    # Command line args to override config
+    # 命令行参数解析
     parser = argparse.ArgumentParser()
-    parser.add_argument('--name', '-n', type=str, help='Experiment name', default=None)
+    parser.add_argument('--name', '-n', type=str, help='实验名称', default=None)
+    parser.add_argument('--srcName', type=str, help='源实验名称(加载预训练权重)', required=True)
     parser.add_argument('--mode', '-m', type=str, choices=['cffa', 'cfoct', 'octfa', 'cfocta'], 
-                        help='Registration mode', default=None)
-    parser.add_argument('--epoch', '-e', type=int, help='Number of training epochs', default=500)
-    parser.add_argument('--batch_size', '-b', type=int, help='Batch size for training', default=4)
-    parser.add_argument('--geometric_thresh', '-g', type=float, help='RANSAC geometric threshold for PKE', default=0.7)
-    parser.add_argument('--content_thresh', '-c', type=float, help='Lowe ratio threshold for feature matching', default=0.8)
+                        help='配准模式', default=None)
+    parser.add_argument('--epoch', '-e', type=int, help='训练轮数', default=100)
+    parser.add_argument('--batch_size', '-b', type=int, help='批量大小', default=4)
+    parser.add_argument('--geometric_thresh', '-g', type=float, help='RANSAC几何阈值', default=0.7)
+    parser.add_argument('--content_thresh', '-c', type=float, help='Lowe比率阈值', default=0.8)
     args = parser.parse_args()
     
     if args.name:
@@ -306,18 +317,17 @@ def train_multimodal():
         
     train_config = {**config['MODEL'], **config['PKE'], **config['DATASET'], **config['VALUE_MAP']}
     
-    exp_name = train_config.get('name', 'default_exp')
+    exp_name = train_config.get('name', 'phase4_exp')
     reg_type = train_config['registration_type']
     save_root = f'./save/{reg_type}/{exp_name}'
     os.makedirs(save_root, exist_ok=True)
     
     log_file = os.path.join(save_root, 'validation_log.txt')
-    train_log_file = os.path.join(save_root, 'train_log.txt')  # 新增：训练日志
+    train_log_file = os.path.join(save_root, 'train_log.txt')
     
     device = torch.device(train_config['device'] if torch.cuda.is_available() else "cpu")
     
-    # 打开训练日志文件
-    train_log = open(train_log_file, 'a', buffering=1)  # 行缓冲，实时写入
+    train_log = open(train_log_file, 'a', buffering=1)
     
     def log_print(msg):
         """同时输出到控制台和日志文件"""
@@ -325,162 +335,180 @@ def train_multimodal():
         train_log.write(msg + '\n')
         train_log.flush()
     
-    log_print(f"Using device: {device} | Experiment: {exp_name}")
+    log_print(f"使用设备: {device} | 实验名称: {exp_name}")
+    log_print(f"阶段 4: 全量真实数据 PKE 微调")
 
-    # 数据加载 - 使用新的FIVES数据集
-    root_dir = train_config['root_dir']
+    # ===== 数据加载 =====
     batch_size = train_config['batch_size']
-    img_size = train_config.get('img_size', 512)
-    df = train_config.get('df', 8)
     
-    train_set = MultiModalDataset(
-        root_dir=root_dir, 
-        mode=reg_type, 
-        split='train', 
-        img_size=img_size, 
-        df=df
-    )
-    val_set = MultiModalDataset(
-        root_dir=root_dir, 
-        mode=reg_type, 
-        split='val', 
-        img_size=img_size, 
-        df=df
-    )
+    # 加载真实数据集
+    log_print(f"加载真实数据集 (模式: {reg_type})...")
+    if reg_type == 'cffa':
+        real_train_raw = CFFADataset(
+            root_dir='/data/student/Fengjunming/SuperRetina/dataset/operation_pre_filtered_cffa',
+            split='train',
+            mode='cf2fa'
+        )
+        real_val_raw = CFFADataset(
+            root_dir='/data/student/Fengjunming/SuperRetina/dataset/operation_pre_filtered_cffa',
+            split='val',
+            mode='cf2fa'
+        )
+    elif reg_type == 'cfoct':
+        real_train_raw = CFOCTDataset(
+            root_dir='/data/student/Fengjunming/SuperRetina/dataset/operation_pre_filtered_cfoct',
+            split='train',
+            mode='cf2oct'
+        )
+        real_val_raw = CFOCTDataset(
+            root_dir='/data/student/Fengjunming/SuperRetina/dataset/operation_pre_filtered_cfoct',
+            split='val',
+            mode='cf2oct'
+        )
+    elif reg_type == 'octfa':
+        real_train_raw = OCTFADataset(
+            root_dir='/data/student/Fengjunming/SuperRetina/dataset/operation_pre_filtered_octfa',
+            split='train',
+            mode='fa2oct'
+        )
+        real_val_raw = OCTFADataset(
+            root_dir='/data/student/Fengjunming/SuperRetina/dataset/operation_pre_filtered_octfa',
+            split='val',
+            mode='fa2oct'
+        )
+    elif reg_type == 'cfocta':
+        real_train_raw = CFOCTADataset(
+            root_dir='/data/student/Fengjunming/SuperRetina/dataset/CF_OCTA_v2_repaired',
+            split='train',
+            mode='cf2octa'
+        )
+        real_val_raw = CFOCTADataset(
+            root_dir='/data/student/Fengjunming/SuperRetina/dataset/CF_OCTA_v2_repaired',
+            split='val',
+            mode='cf2octa'
+        )
+    else:
+        raise ValueError(f"不支持的配准模式: {reg_type}")
     
-    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, num_workers=4)
+    # 包装真实数据集
+    train_set = RealDatasetWrapper(real_train_raw)
+    val_set = RealDatasetWrapper(real_val_raw)
+    
+    n_train = len(train_set)
+    log_print(f"真实训练样本数: {n_train}")
+    
+    # 创建 DataLoader
+    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, num_workers=4, drop_last=False)
     val_loader = DataLoader(val_set, batch_size=1, shuffle=False, num_workers=4)
     
-    # 初始化多模态 SuperRetina 模型
+    # ===== 初始化模型 =====
     model = SuperRetinaMultimodal(train_config, device=device)
     
-    if train_config['load_pre_trained_model']:
-        path = train_config['pretrained_path']
-        if os.path.exists(path):
-            log_print(f"Loading pretrained model from {path}")
-            checkpoint = torch.load(path, map_location=device)
-            model.load_state_dict(checkpoint['net'])
-            
-    optimizer = optim.Adam(model.parameters(), lr=1e-4)
+    # 加载预训练权重
+    pretrained_path = f'./save/{reg_type}/{args.srcName}/bestcheckpoint/checkpoint.pth'
+    if not os.path.exists(pretrained_path):
+        raise FileNotFoundError(f"预训练权重未找到: {pretrained_path}")
+    
+    log_print(f"从以下路径加载预训练权重: {pretrained_path}")
+    checkpoint = torch.load(pretrained_path, map_location=device)
+    model.load_state_dict(checkpoint['net'])
+    
+    # 使用较小的学习率 (1/10)
+    lr = 1e-5
+    optimizer = optim.Adam(model.parameters(), lr=lr)
+    log_print(f"学习率设置为: {lr}")
     
     num_epochs = train_config['num_epoch']
-    pke_start_epoch = train_config['pke_start_epoch']
     
+    # Value Map 配置
     is_value_map_save = train_config['is_value_map_save']
     value_map_save_dir = train_config['value_map_save_dir']
     
-    if is_value_map_save:
-        if os.path.exists(value_map_save_dir):
-            shutil.rmtree(value_map_save_dir)
+    if is_value_map_save and not os.path.exists(value_map_save_dir):
         os.makedirs(value_map_save_dir)
         
     value_maps_running = {} if not is_value_map_save else None
     best_mse = float('inf')
     
-    # 早停机制变量 (仅在epoch >= 100后启用)
-    patience = 5  # 验证损失连续5次不下降则早停
+    # 早停机制
+    patience = 5
     patience_counter = 0
     best_val_mse = float('inf')
 
     # 初始验证
     val_cache = []
-    log_print("Running initial validation...")
+    log_print("运行初始验证...")
     _, val_cache = validate(model, val_loader, device, 0, save_root, log_file, train_config, val_cache=val_cache)
 
-    pke_start_epoch = train_config.get('pke_start_epoch', 40) # 默认40以后开启PKE
-    
-    # 训练循环
+    # ===== 训练循环 =====
     for epoch in range(1, num_epochs + 1):
-        # Determine Training Phase
-        if epoch <= 20:
-            phase = 1 # Warmup
-            model.PKE_learn = False
-            phase_name = "Phase 1: Warmup (Desc + GT Det)"
-        elif epoch <= 40:
-            phase = 2 # Geo Consistency
-            model.PKE_learn = False
-            phase_name = "Phase 2: Geo Consistency (Desc + GT Det + Geo Det)"
-        else:
-            phase = 3 # Joint PKE
-            model.PKE_learn = True
-            phase_name = "Phase 3: Joint PKE"
-            
-        log_print(f'Epoch {epoch}/{num_epochs} | {phase_name}')
+        log_print(f'Epoch {epoch}/{num_epochs} | Phase 4: 全量真实数据 PKE 微调')
         model.train()
+        
+        # Phase 4: PKE 完全开启
+        model.PKE_learn = True
             
         running_loss_det = 0.0
         running_loss_desc = 0.0
         total_samples = 0
         
-        for data in tqdm(train_loader, desc=f"Train Epoch {epoch}"):
-            img0 = data['image0'].to(device)
-            img1 = data['image1'].to(device)
-            # ===== 关键修改：从完整血管分割图中提取稀疏的分叉点 =====
-            # 这些分叉点将作为训练时的监督信号，引导模型学习独特的关键点
-            vessel_mask_full = data['vessel_mask0']  # [B, 1, H, W]
-            vessel_keypoints_batch = []
+        pbar = tqdm(train_loader, desc=f"训练 Epoch {epoch}")
+        for batch_data in pbar:
+            img0 = batch_data['image0'].to(device)
+            img1 = batch_data['image1'].to(device)
+            H_0to1 = batch_data['T_0to1'].to(device)
+            keypoints_heatmap = batch_data['keypoints_heatmap'].unsqueeze(1).to(device)  # [B, 1, 64, 64]
             
-            for b in range(vessel_mask_full.shape[0]):
-                # 转换为 numpy 格式 (H, W)
-                mask_np = (vessel_mask_full[b, 0].cpu().numpy() * 255).astype(np.uint8)
-                
-                # 提取关键点
-                try:
-                    keypoints = extract_vessel_keypoints(mask_np, min_distance=8)
-                except:
-                    try:
-                        keypoints = extract_vessel_keypoints_fallback(mask_np, min_distance=8)
-                    except:
-                        # 如果提取失败，使用原始掩码（但这会导致之前的问题）
-                        keypoints = (mask_np > 127).astype(np.float32)
-                        print("点位提取失败")
-                vessel_keypoints_batch.append(torch.from_numpy(keypoints).float())
-
-            # 转换回 tensor [B, 1, H, W]
-            vessel_keypoints = torch.stack(vessel_keypoints_batch, dim=0).unsqueeze(1).to(device)
-            
-            
-            # 准备 PKE 训练所需参数
             batch_size = img0.size(0)
-            input_with_labels = torch.ones(batch_size, dtype=torch.bool).to(device)
-            learn_index = torch.where(input_with_labels)
             
-            # 加载动态 Value Maps (记录每个像素点的历史置信度)
-            names = data['pair_names'][0] # 使用固定图名称作为 key
+            # 创建 learn_index
+            learn_index = (torch.arange(batch_size, device=device),)
+            input_with_labels = torch.ones(batch_size, dtype=torch.bool).to(device)
+            
+            # 处理 pair_names
+            pair_names_raw = batch_data['pair_names']
+            if isinstance(pair_names_raw, (list, tuple)):
+                names = [str(n) for n in pair_names_raw]
+            else:
+                names = [str(pair_names_raw)]
+            
+            # 加载 value_maps
             value_maps = value_map_load(value_map_save_dir, names, input_with_labels, 
                                       img0.shape[-2:], value_maps_running)
             value_maps = value_maps.to(device)
             
-            # 读取真值几何变换矩阵 H_0to1 (image0 -> image1)，用于描述子热身阶段
-            H_0to1 = data.get('T_0to1', None)
-            if H_0to1 is not None:
-                H_0to1 = H_0to1.to(device)
-            
             optimizer.zero_grad()
             
             with torch.set_grad_enabled(True):
-                # 调用模型 forward 方法，传入关键点掩码（而不是完整血管掩码）作为初始标签
-                # 同时传入完整血管掩码 vessel_mask_full 用于 PKE 候选点过滤
+                # 使用 Phase 3 完整 PKE 训练（真实数据不使用 vessel_mask）
                 loss, number_pts, loss_det_item, loss_desc_item, enhanced_kp, enhanced_label, det_pred, n_det, n_desc = \
-                    model(img0, img1, vessel_keypoints, value_maps, learn_index,
-                          phase=phase, vessel_mask=vessel_mask_full, H_0to1=H_0to1)
+                    model(img0, img1, keypoints_heatmap, value_maps, learn_index,
+                          phase=3, vessel_mask=None, H_0to1=H_0to1)
                     
                 loss.backward()
                 optimizer.step()
-                
-            # 更新持久化的 Value Maps
+            
+            # 保存 value_maps
             if len(learn_index[0]) > 0:
                 value_maps = value_maps.cpu()
                 value_map_save(value_map_save_dir, names, input_with_labels, value_maps, value_maps_running)
                     
             running_loss_det += loss_det_item
             running_loss_desc += loss_desc_item
-            total_samples += img0.size(0)
+            total_samples += batch_size
+            
+            # 更新进度条
+            pbar.set_postfix({
+                'Det': f'{running_loss_det/max(total_samples,1):.4f}',
+                'Desc': f'{running_loss_desc/max(total_samples,1):.4f}'
+            })
 
         epoch_loss = (running_loss_det + running_loss_desc) / total_samples
-        log_print(f'Train Total Loss: {epoch_loss:.4f} (Det: {running_loss_det/total_samples:.4f}, Desc: {running_loss_desc/total_samples:.4f})')
+        log_print(f'训练总损失: {epoch_loss:.4f}')
+        log_print(f'  Det Loss: {running_loss_det/max(total_samples,1):.4f}, Desc Loss: {running_loss_desc/max(total_samples,1):.4f}')
+        log_print(f'样本总数: {total_samples}')
         
-        # 每 5 个 Epoch 进行一次验证并保存模型
+        # 每 5 个 Epoch 进行一次验证
         if epoch % 5 == 0:
             avg_mse, _ = validate(model, val_loader, device, epoch, save_root, log_file, train_config, val_cache=val_cache)
             
@@ -495,37 +523,34 @@ def train_multimodal():
             latest_dir = os.path.join(save_root, 'latestpoint')
             os.makedirs(latest_dir, exist_ok=True)
             torch.save(state, os.path.join(latest_dir, 'checkpoint.pth'))
-            # 保存epoch信息
             with open(os.path.join(latest_dir, 'checkpoint_info.txt'), 'w') as f:
                 f.write(f'Latest Checkpoint\nEpoch: {epoch}\nMSE: {avg_mse:.4f}\n')
             
-            # 保存 MSE 表现最好的模型
+            # 保存最佳模型
             if avg_mse < best_mse:
-                log_print(f"New Best MSE: {avg_mse:.4f} (Previous: {best_mse:.4f})")
+                log_print(f"新的最佳 MSE: {avg_mse:.4f} (之前: {best_mse:.4f})")
                 best_mse = avg_mse
                 best_dir = os.path.join(save_root, 'bestcheckpoint')
                 os.makedirs(best_dir, exist_ok=True)
                 torch.save(state, os.path.join(best_dir, 'checkpoint.pth'))
-                # 保存epoch信息
                 with open(os.path.join(best_dir, 'checkpoint_info.txt'), 'w') as f:
                     f.write(f'Best Checkpoint\nEpoch: {epoch}\nMSE: {avg_mse:.4f}\n')
             
-            # 早停机制 (仅在 epoch >= 100 后启用)
-            if epoch >= 100:
-                if avg_mse < best_val_mse:
-                    best_val_mse = avg_mse
-                    patience_counter = 0
-                    log_print(f'[Early Stopping] Validation MSE improved to {best_val_mse:.4f}. Reset patience counter.')
-                else:
-                    patience_counter += 1
-                    log_print(f'[Early Stopping] Validation MSE did not improve. Patience: {patience_counter}/{patience}')
-                
-                if patience_counter >= patience:
-                    log_print(f'Early stopping triggered at epoch {epoch}. Best validation MSE: {best_val_mse:.4f}')
-                    break
+            # 早停机制
+            if avg_mse < best_val_mse:
+                best_val_mse = avg_mse
+                patience_counter = 0
+                log_print(f'[早停] 验证 MSE 改善至 {best_val_mse:.4f}. 重置耐心计数器.')
+            else:
+                patience_counter += 1
+                log_print(f'[早停] 验证 MSE 未改善. 耐心: {patience_counter}/{patience}')
+            
+            if patience_counter >= patience:
+                log_print(f'早停触发于 epoch {epoch}. 最佳验证 MSE: {best_val_mse:.4f}')
+                break
     
-    # 训练结束，关闭日志文件
     train_log.close()
+    log_print("训练完成!")
 
 if __name__ == '__main__':
-    train_multimodal()
+    train_phase4()
