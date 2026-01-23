@@ -1,5 +1,9 @@
 """
-基于v3_1, 添加域随机化增强 (Domain Randomization)
+基于v3_1, 添加以下改进:
+1. 域随机化增强 (Domain Randomization) - 打破 CF 和 FA/OCT 之间的纹理相关性
+2. InfoNCE Loss 替代 Triplet Loss - 使用 batch 内所有点作为负样本, 防止描述子坍塌
+
+对应模型文件: model/super_retina_multimodal.py (descriptor_loss_warmup 使用 InfoNCE)
 """
 
 import torch

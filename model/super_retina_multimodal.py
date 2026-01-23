@@ -16,6 +16,50 @@ from common.common_util import remove_borders, sample_keypoint_desc, simple_nms,
 from common.train_util import get_gaussian_kernel, affine_images
 
 
+# ============================================================================
+# InfoNCE Loss (对比学习损失)
+# 相比 Triplet Loss 使用 batch 内所有其他点作为负样本, 提供更强的对比信号
+# 可有效防止描述子坍塌 (Descriptor Collapse)
+# ============================================================================
+
+def info_nce_loss(anchor, positive, all_negatives, temperature=0.07):
+    """
+    InfoNCE Loss (Noise Contrastive Estimation)
+    
+    Args:
+        anchor: [N, D] 锚点描述子 (来自 fix 图像)
+        positive: [N, D] 正样本描述子 (来自 moving 图像，与 anchor 一一对应)
+        all_negatives: [M, D] 负样本池 (batch 内所有 moving 描述子)
+        temperature: 温度参数, 控制分布的锐利程度, 越小越尖锐
+    
+    Returns:
+        loss: InfoNCE 损失值
+    """
+    N = anchor.shape[0]
+    
+    # 计算 anchor 与 positive 的相似度 (正样本)
+    # [N, D] x [N, D] -> [N] (对应位置点积)
+    pos_sim = (anchor * positive).sum(dim=1) / temperature  # [N]
+    
+    # 计算 anchor 与所有负样本的相似度
+    # [N, D] x [M, D].T -> [N, M]
+    neg_sim = torch.mm(anchor, all_negatives.T) / temperature  # [N, M]
+    
+    # 将正样本相似度插入到第一个位置，构成 [N, M+1] 的 logits
+    # 这样 target 就是全 0 向量 (正样本在位置 0)
+    logits = torch.cat([pos_sim.unsqueeze(1), neg_sim], dim=1)  # [N, M+1]
+    
+    # 目标是让第 0 个位置 (正样本) 的概率最大
+    targets = torch.zeros(N, dtype=torch.long, device=anchor.device)
+    
+    # 使用交叉熵损失
+    loss = F.cross_entropy(logits, targets)
+    
+    return loss
+
+
+
+
 def double_conv(in_channels, out_channels):
     """
     双层卷积模块，用于上采样过程中的特征融合
@@ -360,19 +404,17 @@ class SuperRetinaMultimodal(nn.Module):
         if len(anchor_list) == 0:
             return torch.tensor(0., requires_grad=True, device=device), False
 
-        anchor = torch.cat(anchor_list, dim=0)
-        positive = torch.cat(positive_list, dim=0)
-        negatives_hard = torch.cat(negatives_hard_list, dim=0)
-        negatives_cross = torch.cat(negatives_cross_list, dim=0)
+        anchor = torch.cat(anchor_list, dim=0)  # [Total_N, D]
+        positive = torch.cat(positive_list, dim=0)  # [Total_N, D]
 
-        # 归一化后使用三元组损失
+        # 归一化描述子 (InfoNCE 使用余弦相似度)
         anchor = F.normalize(anchor, dim=-1, p=2)
         positive = F.normalize(positive, dim=-1, p=2)
-        negatives_hard = F.normalize(negatives_hard, dim=-1, p=2)
-        negatives_cross = F.normalize(negatives_cross, dim=-1, p=2)
+        all_mov_pool_norm = F.normalize(all_mov_pool, dim=-1, p=2)  # [Total_N, D]
 
-        # 使用跨图像负样本替换原来的随机负样本，增强全局判别力
-        loss = triplet_margin_loss_gor(anchor, positive, negatives_hard, negatives_cross, margin=0.8)
+        # ===== 使用 InfoNCE Loss =====
+        # 将 batch 内所有 moving 描述子作为负样本池
+        loss = info_nce_loss(anchor, positive, all_mov_pool_norm, temperature=0.07)
         return loss, True
     
     def forward(self, fix_img, mov_img, label_point_positions=None, value_map=None, learn_index=None,
