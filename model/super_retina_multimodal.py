@@ -326,14 +326,14 @@ class SuperRetinaMultimodal(nn.Module):
         return loss, True
     
     def forward(self, fix_img, mov_img, label_point_positions=None, value_map=None, learn_index=None,
-                descriptor_only=False, vessel_mask=None, H_0to1=None):
+                phase=3, vessel_mask=None, H_0to1=None):
         """
-        主前向传播逻辑
+        主前向传播逻辑 - 支持四阶段训练策略
+        :param phase: 训练阶段 (1: Warmup, 2: Geo-Consistency, 3: PKE Joint Training)
         :param fix_img: 固定图像 (CF)
-        :param mov_img: 运动图像 (FA/OCT)，训练时与 fix_img 对齐
-        :param label_point_positions: 初始种子点标签
-        :param descriptor_only: 若为True，则仅训练描述子（跳过检测器损失和PKE）
-        :param vessel_mask: 固定图像的血管分割图 [B, 1, H, W]，用于PKE候选点过滤
+        :param mov_img: 运动图像 (FA/OCT)
+        :param label_point_positions: GT 关键点标签 (Phase 1/2 使用)
+        :param H_0to1: 真值单应性矩阵 (Phase 1/2 使用)
         """
         
         # 1. 提取固定图像（CF 模态）与运动图像的特征
@@ -342,121 +342,155 @@ class SuperRetinaMultimodal(nn.Module):
         
         enhanced_label_pts = None
         enhanced_label = None
+        loss_detector_num = 0
+        loss_descriptor_num = 0
 
-        if label_point_positions is not None: # 训练模式
-            if self.PKE_learn and not descriptor_only:
-                loss_detector_num = len(learn_index[0])
-                loss_descriptor_num = fix_img.shape[0]
-            else:
-                loss_detector_num = len(learn_index[0])
-                loss_descriptor_num = loss_detector_num
+        # 推断模式
+        if label_point_positions is None:
+             return detector_pred_fix, descriptor_pred_fix
 
-            number_pts = 0 
-            value_map_update = None
-            loss_detector = torch.tensor(0., requires_grad=True).to(fix_img)
-            loss_descriptor = torch.tensor(0., requires_grad=True).to(fix_img)
+        # 训练模式准备
+        B, _, H, W = detector_pred_fix.shape
+        loss_detector = torch.tensor(0., requires_grad=True).to(fix_img)
+        loss_descriptor = torch.tensor(0., requires_grad=True).to(fix_img)
+        number_pts = 0
 
-            if descriptor_only:
-                # 描述子热身阶段: 不进行 PKE / 检测器损失, 只使用真值 H_0to1 做几何监督
-                loss_detector = torch.tensor(0., requires_grad=True).to(fix_img)
-                loss_descriptor, descriptor_train_flag = self.descriptor_loss_warmup(
-                    label_point_positions, descriptor_pred_fix, descriptor_pred_mov, H_0to1
-                )
-                number_pts = 0
-            else:
-                # 联合训练阶段 (descriptor_only=False)
-                # 如果数据集已经提供了真值仿射矩阵 H_0to1 (如 FIVES), 则不再做额外的随机仿射,
-                # 而是直接使用 H_0to1 构建几何映射网格, 将固定图上的点映射到 moving 图像上。
-                B, _, H, W = detector_pred_fix.shape
-
+        # =========================================================
+        # Phase 1 & 2: 热身期 & 几何一致性预热 (PKE OFF)
+        # =========================================================
+        if phase in [1, 2]:
+            loss_descriptor_num = B
+            
+            # --- A. 描述子损失 (全程) ---
+            # 使用真值 H_0to1 构造几何关系，无需额外 Image Augmentation
+            # 注意：Phase 1/2 我们只信任 GT H 带来的对应关系
+            loss_descriptor, _ = self.descriptor_loss_warmup(
+                label_point_positions, descriptor_pred_fix, descriptor_pred_mov, H_0to1
+            )
+            
+            # --- B. Fix 检测器热身 (Phase 1 & 2) ---
+            # 强监督：利用 GT 分叉点生成的高斯热力图训练 Fix Detector
+            # label_point_positions 是 0/1 mask，需要平滑为 soft label
+            gt_heatmap = F.conv2d(label_point_positions, self.kernel, 
+                                  stride=1, padding=(self.kernel.shape[-1] - 1) // 2)
+            gt_heatmap[gt_heatmap > 1] = 1.0
+            
+            # loss_det_fix = Dice(pred, gt)
+            loss_det_warm = self.dice(detector_pred_fix, gt_heatmap)
+            loss_detector = loss_detector + loss_det_warm
+            
+            # --- C. Moving 检测器几何对齐 (Phase 2 Only) ---
+            # 利用 H_0to1 将 Moving 检测图 warp 回 Fix 空间，要求其与 Fix 检测图一致
+            if phase == 2:
                 if H_0to1 is not None:
-                    # 使用真值 H_0to1 构造 grid_inverse: [B, H, W, 2]
-                    if H_0to1.dim() == 2:
-                        H_0to1 = H_0to1.unsqueeze(0)
-                    H_0to1 = H_0to1.to(fix_img.device)
+                     # 构造 grid 用于 warp (moving -> fix, 即 H^-1)
+                    if H_0to1.dim() == 2: H_0to1 = H_0to1.unsqueeze(0)
+                    
+                    # 求逆矩阵: H_fix->mov = H_0to1 => H_mov->fix = inv(H_0to1)
+                    try:
+                        H_inv = torch.inverse(H_0to1)
+                    except:
+                        H_inv = torch.eye(3, device=fix_img.device).repeat(B, 1, 1) # Fallback
 
-                    ys, xs = torch.meshgrid(
-                        torch.arange(H, device=fix_img.device),
-                        torch.arange(W, device=fix_img.device),
-                        indexing='ij'
-                    )
-                    ones = torch.ones_like(xs, dtype=torch.float32)
-                    base_pts = torch.stack([xs.float(), ys.float(), ones], dim=-1)  # [H, W, 3]
-                    base_pts_flat = base_pts.view(-1, 3)  # [H*W, 3]
-
+                    # 构造采样网格
                     grid_list = []
+                    ys, xs = torch.meshgrid(torch.arange(H, device=fix_img.device), torch.arange(W, device=fix_img.device), indexing='ij')
+                    # 归一化坐标系构造 grid 比较繁琐，这里使用 affine_grid 的简化版逻辑
+                    # 直接构造像素坐标 -> 变换 -> 归一化
+                    ones = torch.ones_like(xs, dtype=torch.float32)
+                    pts = torch.stack([xs.float(), ys.float(), ones], dim=-1).view(-1, 3) # (N, 3)
+                    
                     for b in range(B):
-                        Hmat = H_0to1[b]  # [3, 3]
-                        pts_mov = base_pts_flat @ Hmat.t()  # [N, 3]
-                        xs_mov = pts_mov[:, 0] / (pts_mov[:, 2] + 1e-6)
-                        ys_mov = pts_mov[:, 1] / (pts_mov[:, 2] + 1e-6)
+                        # H_inv * pts_fix = pts_mov (找到 fix 像素对应的 moving 坐标)
+                        h_mat = H_0to1[b] # 这里要用 H_0to1 (fix -> moving) 还是 inverse?
+                        # F.grid_sample(input, grid) 中 grid 对于输出点 (x,y)，采样 input 在 (u,v) 的值
+                        # 我们想要输出 warped_det_mov (在 fix 坐标系)，所以对于 fix 上的点 (x,y)，
+                        # 我们需要知道它在 moving 图上的位置 (u,v) = H_0to1 * (x,y)
+                        
+                        # 所以这里确实是用 H_0to1 直接算映射坐标
+                        pts_mov = pts @ h_mat.t() 
+                        u = pts_mov[:, 0] / (pts_mov[:, 2] + 1e-6)
+                        v = pts_mov[:, 1] / (pts_mov[:, 2] + 1e-6)
+                        
+                        u = 2.0 * u / (W - 1) - 1.0
+                        v = 2.0 * v / (H - 1) - 1.0
+                        
+                        grid_list.append(torch.stack([u, v], dim=-1).view(H, W, 2))
+                        
+                    grid = torch.stack(grid_list, dim=0) # [B, H, W, 2]
+                    
+                    # 采样：warp moving detection to fix coordinate
+                    det_mov_warped = F.grid_sample(detector_pred_mov, grid, align_corners=True)
+                    
+                    # 几何一致性 Loss: Dice(det_fix, det_mov_warped)
+                    # 系数设为 0.5 (可调)
+                    loss_geo_warm = self.dice(detector_pred_fix, det_mov_warped)
+                    loss_detector = loss_detector + 0.5 * loss_geo_warm
 
-                        # 归一化到 [-1, 1] 供 grid_sample 使用
-                        u = xs_mov / (W - 1) * 2 - 1
-                        v = ys_mov / (H - 1) * 2 - 1
-                        grid_b = torch.stack([u, v], dim=-1).view(H, W, 2)
-                        grid_list.append(grid_b)
-
-                    grid_inverse = torch.stack(grid_list, dim=0)  # [B, H, W, 2]
-
-                    # 在联合期, 将 "affine" 分支直接等同于 moving 分支
-                    detector_pred_mov_aug = detector_pred_mov
-                    descriptor_pred_mov_aug = descriptor_pred_mov
-                    valid_mask = torch.ones_like(detector_pred_mov_aug)
-
-                # 屏蔽边缘区域的检测响应 (对于 FIVES 情况下 valid_mask 全 1, 等价于不变)
-                detector_pred_mov_aug = detector_pred_mov_aug * valid_mask
-                
-                # 3. 跨模态渐进式关键点扩充 (PKE)
-                # 核心思想：通过几何校验和内容校验，自动发现两模态间可靠的匹配点作为新增标签
-                loss_cal = self.dice
-                if len(learn_index[0]) != 0:
-                    # pke_learn 内部实现了几何一致性损失 (l_geo) 和 动态标签演化 (l_clf)
-                    loss_detector, number_pts, value_map_update, enhanced_label_pts, enhanced_label = \
-                        pke_learn(detector_pred_fix[learn_index], descriptor_pred_fix[learn_index],
-                                  grid_inverse[learn_index], detector_pred_mov_aug[learn_index],
-                                  descriptor_pred_mov_aug[learn_index], self.kernel, loss_cal,
-                                  label_point_positions[learn_index], value_map[learn_index],
-                                  self.config, self.PKE_learn, vessel_mask=vessel_mask[learn_index] if vessel_mask is not None else None)
-                
-                # 辅助可视化
-                if enhanced_label_pts is not None:
-                    enhanced_label_pts_tmp = label_point_positions.clone()
-                    enhanced_label_pts_tmp[learn_index] = enhanced_label_pts
-                    enhanced_label_pts = enhanced_label_pts_tmp
-                if enhanced_label is not None:
-                    enhanced_label_tmp = label_point_positions.clone()
-                    enhanced_label_tmp[learn_index] = enhanced_label
-                    enhanced_label = enhanced_label_tmp
-                
-                detector_pred_copy = detector_pred_fix.clone().detach()
-                
-                # 4. 跨模态描述子损失 (l_des)
-                # 若有真值 H_0to1, 直接使用该几何关系构造 grid_inverse_desc, 避免重复随机仿射
-                if H_0to1 is not None:
-                    grid_inverse_desc = grid_inverse
-                    descriptor_pred_mov_aug_desc = descriptor_pred_mov
-                else:
-                    affine_mov_desc, grid_desc, grid_inverse_desc = affine_images(mov_img, used_for='descriptor')
-                    _, descriptor_pred_mov_aug_desc = self.network(affine_mov_desc)
-                
-                loss_descriptor, descriptor_train_flag = self.descriptor_loss(
-                    detector_pred_copy, label_point_positions,
-                    descriptor_pred_fix,
-                    descriptor_pred_mov_aug_desc,
-                    grid_inverse_desc,
-                    affine_detector_pred=None 
-                )
-                
-                if self.PKE_learn and len(learn_index[0]) != 0:
-                    value_map[learn_index] = value_map_update
+            loss_detector_num = B # 或者是别的 counting 逻辑，暂用 B
             
-            # 综合损失优化
-            loss = loss_detector + loss_descriptor
+            return loss_detector + loss_descriptor, number_pts, loss_detector.detach().sum(), \
+                   loss_descriptor.detach().sum(), None, None, detector_pred_fix, loss_detector_num, loss_descriptor_num
+
+        # =========================================================
+        # Phase 3: PKE 联合训练 (Joint Training)
+        # =========================================================
+        elif phase == 3:
+            loss_detector_num = len(learn_index[0])
+            loss_descriptor_num = fix_img.shape[0]
+
+            # 准备 Grid Inverse (用于 PKE 内部的 mapping_points)
+            # 这里的 grid_inverse 应该是: 给定 moving 上的点，找 fix 上的对应点
+            # 即 H_inv = H_0to1^-1
+            # 原代码逻辑：grid_inverse 用于将 fix 坐标映射到 moving 坐标（这就叫 inverse? 只有看完 context 才知道）
+            # Check pke_module.mapping_points: grid_inverse, points (on fix) -> output (on moving)
+            # 所以 pke_module 里需要的 grid 是 "Fix -> Moving" 的映射
             
-            return loss, number_pts, loss_detector.cpu().data.sum(), \
-                   loss_descriptor.cpu().data.sum(), enhanced_label_pts, \
+            # 复用 Phase 1 里的 grid 构建逻辑 (H_0to1: Fix -> Moving)
+            if H_0to1 is not None:
+                if H_0to1.dim() == 2: H_0to1 = H_0to1.unsqueeze(0)
+                grid_list = []
+                ys, xs = torch.meshgrid(torch.arange(H, device=fix_img.device), torch.arange(W, device=fix_img.device), indexing='ij')
+                pts = torch.stack([xs.float(), ys.float(), torch.ones_like(xs, dtype=torch.float32)], dim=-1).view(-1, 3)
+                
+                for b in range(B):
+                    # Fix -> Moving 映射
+                    pts_mov = pts @ H_0to1[b].t()
+                    u = pts_mov[:, 0] / (pts_mov[:, 2] + 1e-6)
+                    v = pts_mov[:, 1] / (pts_mov[:, 2] + 1e-6)
+                    u = 2.0 * u / (W - 1) - 1.0
+                    v = 2.0 * v / (H - 1) - 1.0
+                    grid_list.append(torch.stack([u, v], dim=-1).view(H, W, 2))
+                grid_inverse = torch.stack(grid_list, dim=0)
+            else:
+                 # Fallback (should not happen in this dataset)
+                 grid_inverse = torch.zeros(B, H, W, 2).to(fix_img.device)
+
+            # PKE 核心过程
+            value_map_update = None
+            if len(learn_index[0]) != 0:
+                loss_detector, number_pts, value_map_update, enhanced_label_pts, enhanced_label = \
+                    pke_learn(detector_pred_fix[learn_index], descriptor_pred_fix[learn_index],
+                              grid_inverse[learn_index], detector_pred_mov[learn_index],
+                              descriptor_pred_mov[learn_index], self.kernel, self.dice,
+                              label_point_positions[learn_index], value_map[learn_index],
+                              self.config, PKE_learn=True, vessel_mask=vessel_mask[learn_index] if vessel_mask is not None else None)
+            
+            # 更新 Value Map
+            if value_map is not None and value_map_update is not None:
+                value_map[learn_index] = value_map_update
+
+            # 联合期描述子 Loss (自监督 + GT辅助)
+            # 为了稳健，我们可以继续保留 descriptor_loss_warmup 的约束 (GT H)，
+            # 也可以切回完全自监督。Plan v5 建议是 "Des Self"，但其实如果有 GT H，用 GT H 采样的 triplet 永远是最准的。
+            # 这里我们还是用 descriptor_loss_warmup (底层逻辑一样，都是 Triplet)，因为它利用了真值 H。
+            # 只要 grid 准，triplet 就准。
+            loss_descriptor, _ = self.descriptor_loss_warmup(
+                label_point_positions, descriptor_pred_fix, descriptor_pred_mov, H_0to1
+            )
+            
+            return loss_detector + loss_descriptor, number_pts, loss_detector.detach().sum(), \
+                   loss_descriptor.detach().sum(), enhanced_label_pts, \
                    enhanced_label, detector_pred_fix, loss_detector_num, loss_descriptor_num
 
-        # 推断阶段：仅输出固定图像的检测图和描述子
-        return detector_pred_fix, descriptor_pred_fix
+        return torch.tensor(0.), 0, 0, 0, None, None, None, 0, 0

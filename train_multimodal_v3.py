@@ -387,18 +387,25 @@ def train_multimodal():
     log_print("Running initial validation...")
     _, val_cache = validate(model, val_loader, device, 0, save_root, log_file, train_config, val_cache=val_cache)
 
+    pke_start_epoch = train_config.get('pke_start_epoch', 40) # 默认40以后开启PKE
+    
     # 训练循环
     for epoch in range(1, num_epochs + 1):
-        # 描述子预热期逻辑
-        descriptor_only = (epoch <= 20)
-        
-        # PKE 渐进式学习开关:冷启动后开启
-        if descriptor_only:
+        # Determine Training Phase
+        if epoch <= 20:
+            phase = 1 # Warmup
             model.PKE_learn = False
+            phase_name = "Phase 1: Warmup (Desc + GT Det)"
+        elif epoch <= 40:
+            phase = 2 # Geo Consistency
+            model.PKE_learn = False
+            phase_name = "Phase 2: Geo Consistency (Desc + GT Det + Geo Det)"
         else:
-            model.PKE_learn = True # 开启 PKE
+            phase = 3 # Joint PKE
+            model.PKE_learn = True
+            phase_name = "Phase 3: Joint PKE"
             
-        log_print(f'Epoch {epoch}/{num_epochs} | PKE_learn: {model.PKE_learn} | Desc_Only: {descriptor_only}')
+        log_print(f'Epoch {epoch}/{num_epochs} | {phase_name}')
         model.train()
             
         running_loss_det = 0.0
@@ -456,7 +463,7 @@ def train_multimodal():
                 # 同时传入完整血管掩码 vessel_mask_full 用于 PKE 候选点过滤
                 loss, number_pts, loss_det_item, loss_desc_item, enhanced_kp, enhanced_label, det_pred, n_det, n_desc = \
                     model(img0, img1, vessel_keypoints, value_maps, learn_index,
-                          descriptor_only=descriptor_only, vessel_mask=vessel_mask_full, H_0to1=H_0to1)
+                          phase=phase, vessel_mask=vessel_mask_full, H_0to1=H_0to1)
                     
                 loss.backward()
                 optimizer.step()

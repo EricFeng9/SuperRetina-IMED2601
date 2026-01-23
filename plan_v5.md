@@ -1,130 +1,105 @@
 
 我现在在做一个课题，目标是目标是基于我们已有的生成数据集（结构完全相同且对齐的cf-oct-fa图像对）训练出一个支持cf-fa，cf-oct（cf均为fix）的多模态配准模型。我们目前在用fractMorph模型进行2D化改造后的模型，但是fractMorph2D只能针对一些微小血管形变进行对齐和修复，但是针对真实情况不对齐图像中出现的血管大尺度旋转（如15 30度的旋转角度）、大的位置偏移的情况下配准效果较差，1是原先的逐像素点移动的模式很差2是我们修改成让模型直接预测放射参数，效果也很差，几乎不收敛。我现在的想法是改造SuperRetina，让模型学习cf图像和oct/fa图像之间的关键点匹配，然后利用这些匹配出来的关键点计算放射矩阵，对跨模态图像进行配准
-# 跨模态 SuperRetina 详细训练计划 (Plan v3)
+# 跨模态 SuperRetina 详细训练计划 (Plan v5)
 
-这份计划基于 **SuperRetina** 的半监督学习框架，并结合了**描述子热身 (Descriptor Warm-up)** 策略，以解决跨模态配准中的"鸡生蛋"问题（即：没有好的描述子就找不到匹配点，找不到匹配点就无法训练好描述子）。
-
----
-
-## 1. 核心训练策略：两阶段课程学习
-### 关键点提取算法
-
-实现位置：`common/vessel_keypoint_extractor.py`
-
-**核心步骤**：
-1. **骨架化（Skeletonization）**：将粗血管线变成单像素宽的中心线
-   - 使用 `cv2.ximgproc.thinning()` 或 `skimage.morphology.skeletonize()`
-2. **邻居统计**：对每个骨架点统计 3×3 邻域内的邻居数量
-3. **关键点识别**：
-   - **分叉点**：邻居数 ≥ 3 的骨架点
-4. **非极大值抑制（NMS）**：去除距离过近的重复点（`min_distance=8` 像素）
-
-**参数**：
-- `min_distance`：关键点之间的最小距离，默认 8 像素
-
-我们将训练过程明确分为两个阶段：
-
-### 第一阶段：描述子热身期 (Descriptor Warm-up)
-- **周期**：Epoch 0 - 20
-- **目标**：在没有任何可靠检测器的情况下，利用血管结构本身的拓扑特征（分叉点、交叉点）作为强监督信号，优先训练出对旋转、模态变化鲁棒的描述子。
-- **机制**：
-    - **冻结 PKE**：此阶段不使用 PKE 进行关键点扩充，防止低质量描述子引入错误标签。
-    - **强制监督**：利用固定图像（CF）的血管分割图提取关键点（分叉点/交叉点），作为 Ground Truth (GT) 锚点。
-    - **忽略检测损失**：模型预测的检测热力图被强制清零，仅在 GT 锚点位置赋予高响应，迫使模型只学习这些特定位置的描述子特征。
-    - **损失计算**：仅计算 **描述子损失 ($l_{des}$)**，忽略检测损失 ($l_{det}$)。
-
-### 第二阶段：联合训练期 (Joint Training)
-- **周期**：Epoch 20+
-- **目标**：利用已经具备一定辨识度的描述子，开启 PKE 自监督机制，让模型自动发现更多潜在的、非血管结构的稳定特征点，同时训练检测器。
-- **机制**：
-    - **开启 PKE**：激活渐进式关键点扩充模块，动态生成伪标签 ($Y_t$)。
-    - **联合优化**：同时计算 **检测损失 ($l_{det}$)** 和 **描述子损失 ($l_{des}$)**。
+目标：
+1. **热身期 (Phase 1)**：既把 **Descriptor** 练好 (利用 GT H + GT 分叉点)，又把 **CF Detector** 拉到“围着 GT 分叉点亮”的状态。
+2. **几何一致性预热 (Phase 2)**：在 PKE 开启前，利用 True H 把 **Moving Detector** 带起来，避免一开始就两边一起学歪。
+3. **PKE 联合训练 (Phase 3)**：在基础打好后，开启 PKE 自监督，但需严格控制质量。
 
 ---
 
-## 2. 详细训练流程 (Training Workflow)
+## 阶段划分与实施细则
 
-在每个 Epoch 的每个 Batch 中，数据流向如下：
-
-### A. 数据准备与增强
-1.  **输入加载**：读取对齐的图像对 $I_{fix}$ (CF) 和 $I_{orig}$ (FA/OCT)。
-2.  **GT 种子点提取**：
-    -   读取 $I_{fix}$ 对应的血管分割图 `vessel_mask0`。
-    -   对分割图进行骨架化 (Skeletonization) 和 3x3 邻域分析，提取**分叉点**和**交叉点**。
-    -   这些点构成当前 Batch 的基础监督信号 `vessel_keypoints`。
-3.  **几何变换 (Geometric Augmentation)**：
-    -   生成随机单应性矩阵 $\mathcal{H}$（包含 $\pm30^\circ$ 旋转、平移、缩放）。
-    -   对 $I_{orig}$ 进行变换得到 $I_{moving} = \text{Warp}(I_{orig}, \mathcal{H})$。
-    -   **重点**：此时我们拥有 $I_{fix}$ 上的点 $p$ 和 $I_{moving}$ 上对应的点 $p' = \mathcal{H}(p)$ 的精确几何关系。
-
-### B. 前向传播与损失计算
-1.  **特征提取**：
-    -   $I_{fix} \to$ `det_fix`, `desc_fix`
-    -   $I_{moving} \to$ `det_mov`, `desc_mov`
-2.  **热身期逻辑 (Epoch <= 20)**：
-    -   设置 `model.PKE_learn = False`。
-    -   在计算损失时，手动将 `det_fix` 在 GT `vessel_keypoints` 位置的值设为最大，其余位置设为 0。
-    -   利用 $\mathcal{H}^{-1}$ 网格，在 $I_{moving}$ 上采样对应位置的描述子。
-    -   计算 Triplet Loss：拉近 $I_{fix}$ 上的 GT 点和 $I_{moving}$ 上对应点的描述子距离，推远非对应点。
-    - **联合期逻辑 (Epoch > 20)**：
-    -   设置 `model.PKE_learn = True`。
-    -   **PKE 模块运行**：
-        1.  **候选点生成**：从检测图提取候选点。
-        2.  **掩码过滤 (Mask Filtering)**：利用 `vessel_mask0` 剔除落在背景区域的候选点，**仅保留血管上的点**作为潜在标签。这能有效抑制背景噪声。
-        3.  **几何校验**：将 `det_mov` 反投影回 `fix` 空间，检查重叠度。
-        4.  **内容校验**：对重叠点进行 Lowe's Ratio Test（利用已学好的描述子）。
-        5.  **标签更新**：将通过校验的点加入动态标签 $Y_t$。
-    -   计算 Dice Loss 优化检测图，计算 Triplet Loss 优化描述子。
+### 零、基础设施 (Phase 0)
+*已就绪*
+- **数据层** (`MultiModalDataset`)：
+  - `image0` (CF, fixed)
+  - `image1` (FA/OCT, moving, random affined)
+  - `T_0to1` (True Homography from image0 to image1)
+  - `vessel_mask0` (CF vessel mask GT)
+- **现有几何逻辑**：
+  - Descriptor Warmup 利用 `H_0to1` 约束 GT 对。
+  - 联合期利用 `H_0to1` 构造 grid。
 
 ---
 
-## 3. 详细验证流程 (Validation Workflow)
+### 一、阶段 1：热身期 (Phase 1) —— Descriptor + CF Detector 联合热身
+**周期**：Epoch 1 – 20
+**状态**：PKE **OFF**
 
-验证过程旨在客观评估模型的配准能力，避免随机性干扰。
+#### 1.1 目标
+- **Descriptor**：利用 `H_0to1` 和 `vessel_keypoints` (分叉点) 学习鲁棒特征。
+- **CF Detector**：受到强监督，学会仅在血管分叉点处高响应，背景处抑制。
+- **Moving Detector**：暂不强行约束 (避免 noisy warp)，由 descriptor 分支隐式带动或阶段 2 处理。
 
-### A. 数据缓存机制 (Caching Strategy)
-为了保证每次验证的可比性，我们在**第一次验证时**（Epoch 0）构建一个固定的验证子集：
-1.  **固定种子**：设置 `torch.manual_seed(2024)`确保随机选取的样本在不同实验中一致。
-2.  **采样数量**：从验证集中随机抽取 **10 个样本**（若不足 10 个则全选）。
-3.  **缓存内容**：将这 10 个样本的图像数据、原始名称等全部加载到内存 (`val_cache`)，后续验证 Epoch 直接复用，不再重复从磁盘读取。
+#### 1.2 具体改动
+- **Input**: `model(..., descriptor_only=True, vessel_keypoints=GT_kps, ...)`
+- **Loss 计算** (在 `descriptor_only` 分支内新增):
+  1.  **Generate Soft Label**:
+      $$Y^{fix} = \text{Gaussian}(vessel\_keypoints)$$
+      使用 `self.kernel` 生成高斯热力图。
+  2.  **Detector Loss**:
+      $$l_{det\_warm} = \text{Dice}(det\_fix, Y^{fix})$$
+  3.  **Total Warmup Loss**:
+      $$L = \lambda_{det} \cdot l_{det\_warm} + \lambda_{des} \cdot l_{des\_warmup}$$
+      建议 $\lambda_{det}=1.0, \lambda_{des}=1.0$。
 
-### B. 评估指标：配准 MSE
-对于每个验证样本：
-1.  **推断**：模型分别处理 $I_{fix}$ 和 $I_{moving}$，输出检测图和描述子。
-2.  **后处理**：
-    -   应用 **NMS (非极大值抑制)** 提取 Top-K 关键点。
-    -   **兜底策略**：如果 NMS 后点数少于 10 个，强制选取响应值最高的 100 个点（防止初期无法配准）。
-3.  **特征匹配**：使用 BFMatcher + Lowe's Ratio Test (`thresh=0.7`) 寻找匹配对。
-4.  **单应性估计**：使用 **RANSAC** (`thresh=3.0` 像素) 计算变换矩阵 $\hat{\mathcal{H}}$。
-5.  **配准误差计算**：
-    -   利用 $\hat{\mathcal{H}}$ 对 $I_{moving}$ 进行变换得到 $I_{reg}$。
-    -   计算 $I_{reg}$ 与原始对齐真值 $I_{orig}$ 之间的 **均方误差 (MSE)**。
-    -   若配准失败（匹配点不足4个），MSE 设为极大值 (10000.0)。
-
-### C. 可视化输出
-验证过程中会自动保存以下图片用于人工检查（路径：`save/.../epochX/sampleY/`）：
-1.  `vessel_keypoints_extracted.png`：[新增] 显示从血管分割图提取的**红色 GT 关键点**。这是确认“热身期监督信号”是否正确的关键。
-2.  `fixed_kps.png`：模型在 $I_{fix}$ 上预测的**绿色关键点**。
-3.  `matches.png`：跨模态图像之间的关键点连线图。
-4.  `registered.png`：最终配准叠加效果图。
+#### 1.3 预期观察
+- `loss_det` 不再为 0，应呈下降趋势。
+- `fixed_kps.png` (绿色预测点) 应高度重合于 `vessel_keypoints_extracted.png` (红色 GT 点)。
 
 ---
 
-## 4. 损失函数细节
+### 二、阶段 2：几何一致性预热 (Phase 2) —— Moving Detector Alignment
+**周期**：Epoch 21 – 40
+**状态**：PKE **OFF**
 
-### 检测损失 (仅联合期)
-$$l_{clf} = 1 - \text{Dice}(P, \text{GaussianSmooth}(Y_t))$$
-目标是让预测的热力图 $P$ 拟合动态演化的标签 $Y_t$。
+#### 2.1 目标
+- 在不引入 PKE 伪标签(可能含噪)的情况下，利用 **True H** 强行拉齐 Moving 侧的 Detector。
+- 让 `det_mov` 在此时就开始对齐 `det_fix`。
 
-### 描述子损失 (全程)
-使用 **Triplet Margin Loss**：
-$$l_{des} = \max(0, m + d(f_a, f_p) - d(f_a, f_n))$$
--   $f_a$ (Anchor): 固定图像 GT 血管点处的描述子。
--   $f_p$ (Positive): 运动图像对应几何位置处的描述子。
--   $f_n$ (Negative): 运动图像上其他位置（Hardest Negative Mining）的描述子。
+#### 2.2 具体改动
+- **Loss 新增**:
+  1.  **Warp Moving Detection**:
+      $$P'_{mov} = \text{Warp}(det\_mov, H_{0\to1}^{-1})$$
+      将 Moving 预测图 warp 回 Fix 空间。
+  2.  **Geometric Consistency Loss**:
+      $$l_{geo\_warm} = \text{Dice}(det\_fix, P'_{mov})$$
+  3.  **Total Loss**:
+      $$L = l_{det\_warm} + l_{des\_warmup} + \lambda_{geo} \cdot l_{geo\_warm}$$
+      建议 $\lambda_{geo} \approx 0.5 - 1.0$.
 
 ---
 
-## 5. 预期效果
--   **Epoch 0-20**：`loss_det` 应为 0。验证集 MSE 可能较高，但 `matches.png` 中的连线应逐渐变准（因为描述子在变好）。
--   **Epoch 20+**：`loss_det` 开始上升（因为开始学习检测），随后下降。PKE 扩充的点数应逐渐增加。最终 MSE 应稳定在较低水平，实现精确配准。
+### 三、阶段 3：正式 PKE 联合训练 (Phase 3)
+**周期**：Epoch 41+
+**状态**：PKE **ON**
+
+#### 3.1 目标
+- 启用 PKE 自动扩充伪标签，捕捉非血管特征 (如病灶、纹理)。
+- 利用前两阶段打下的稳固基础 (Detector 准, Descriptor 强, 几何对齐)，防止 PKE 漂移。
+
+#### 3.2 PKE 策略收紧
+- **Content Threshold**: 训练时收紧至 **0.7 - 0.8** (宁缺毋滥)。验证时可保持 0.9。
+- **Max New Points**: 限制每张图每轮新增点数 (e.g., max 200-500)，防爆炸。
+- **Vessel Mask Filtering**: 仅在血管掩码范围内生成候选点 (已实现)。
+
+#### 3.3 Loss 结构
+$$L = l_{det\_pke} + l_{geo\_pke} + l_{des\_gt}$$
+- $l_{det\_pke}$: 拟合 PKE 动态标签。
+- $l_{geo\_pke}$: PKE 内部的几何一致性。
+- **$l_{des\_gt}$ (关键调整)**：即使在 Phase 3，我们依然**坚持使用 GT H (`H_0to1`) + GT 血管分叉点**来计算描述子损失。
+  - **原因**：防止 PKE 探索过程中的噪声点污染描述子特征空间。检测器负责“探索”，描述子负责“守住底线”，作为整个训练过程的稳定锚点。
+
+---
+
+## 4. 验证与监控 (Sanity Check)
+
+### 4.1 独立验证通路
+- **Fixed/Moving GT Alignment**:
+  - 在验证集随机抽取样本，仅使用 `vessel_keypoints` + `H_0to1` 计算匹配误差 (MSE)。
+  - 这代表了“完美检测器”下的描述子/几何上限。
+- **Keypoint Visualization**:
+  - 重点关注 `fixed_kps.png` (绿点) 是否贴合 `vessel_keypoints_extracted.png` (红点)。
+  - 关注 `fix_registered_checkerboard.png` 拼缝是否从模糊变清晰。
