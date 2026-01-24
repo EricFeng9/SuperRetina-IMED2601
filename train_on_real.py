@@ -66,6 +66,51 @@ class RealDatasetWrapper(Dataset):
             transforms.ToTensor(),
         ])
     
+    def _generate_keypoint_heatmap(self, keypoints, h_orig, w_orig):
+        """
+        从关键点坐标生成高斯热图
+        
+        Args:
+            keypoints: [N, 2] numpy array, (x, y) 坐标（原始图像尺寸）
+            h_orig, w_orig: 原始图像尺寸
+        
+        Returns:
+            [1, img_size, img_size] tensor
+        """
+        keypoint_map = np.zeros((self.img_size, self.img_size), dtype=np.float32)
+        
+        if len(keypoints) == 0:
+            return torch.from_numpy(keypoint_map).unsqueeze(0).float()
+        
+        # 缩放关键点到目标尺寸
+        scale_x = self.img_size / float(w_orig)
+        scale_y = self.img_size / float(h_orig)
+        keypoints_scaled = keypoints * [scale_x, scale_y]
+        
+        # 生成高斯热图
+        sigma = 2
+        size = 7
+        for kp in keypoints_scaled:
+            x, y = int(kp[0]), int(kp[1])
+            
+            # 确保在图像范围内
+            if x < 0 or x >= self.img_size or y < 0 or y >= self.img_size:
+                continue
+            
+            # 生成高斯核
+            y_range = np.arange(max(0, y - size), min(self.img_size, y + size + 1))
+            x_range = np.arange(max(0, x - size), min(self.img_size, x + size + 1))
+            
+            if len(y_range) > 0 and len(x_range) > 0:
+                yy, xx = np.meshgrid(y_range, x_range, indexing='ij')
+                gaussian = np.exp(-((yy - y)**2 + (xx - x)**2) / (2 * sigma**2))
+                keypoint_map[y_range[0]:y_range[-1]+1, x_range[0]:x_range[-1]+1] = np.maximum(
+                    keypoint_map[y_range[0]:y_range[-1]+1, x_range[0]:x_range[-1]+1],
+                    gaussian
+                )
+        
+        return torch.from_numpy(keypoint_map).unsqueeze(0).float()
+    
     def __len__(self):
         # 返回 fix 和 moving 的总数（2倍）
         return len(self.base_dataset) * 2
@@ -77,14 +122,16 @@ class RealDatasetWrapper(Dataset):
         
         # 获取原始数据: (img_fix, img_mov, pts_fix, pts_mov, path_fix, path_mov)
         raw_data = self.base_dataset.get_raw_sample(sample_idx)
-        img_fix_raw, img_mov_raw, _, _, path_fix, path_mov = raw_data
+        img_fix_raw, img_mov_raw, pts_fix, pts_mov, path_fix, path_mov = raw_data
         
         # 选择使用 fix 还是 moving
         if is_moving:
             img_raw = img_mov_raw
+            keypoints = pts_mov
             path = path_mov
         else:
             img_raw = img_fix_raw
+            keypoints = pts_fix
             path = path_fix
         
         # 确保图像为灰度
@@ -96,11 +143,13 @@ class RealDatasetWrapper(Dataset):
         else:
             img_gray = img_raw
         
+        h_orig, w_orig = img_gray.shape[:2]
+        
         # 转换为 Tensor [1, H, W]
         img_tensor = self.transform(img_gray)
         
-        # 生成空的关键点标注 (SuperRetina 原始流程需要)
-        keypoint_positions = torch.zeros(1, self.img_size, self.img_size, dtype=torch.float32)
+        # 使用真实数据集的标注关键点生成热图
+        keypoint_positions = self._generate_keypoint_heatmap(keypoints, h_orig, w_orig)
         
         # 标记为有标注（启用 PKE 学习）
         input_with_label = torch.tensor(True, dtype=torch.bool)
@@ -336,7 +385,7 @@ def train_on_real():
     parser.add_argument('--epoch', '-e', type=int, default=150, help='Number of training epochs')
     parser.add_argument('--batch_size', '-b', type=int, default=4, help='Batch size')
     parser.add_argument('--img_size', type=int, default=512, help='Image size for training')
-    parser.add_argument('--pke_start_epoch', type=int, default=40, help='Epoch to start PKE learning')
+    parser.add_argument('--pke_start_epoch', type=int, default=0, help='Epoch to start PKE learning (0 means always on, same as original SuperRetina)')
     parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate')
     parser.add_argument('--geometric_thresh', '-g', type=float, help='RANSAC geometric threshold for PKE', default=0.7)
     parser.add_argument('--content_thresh', '-c', type=float, help='Lowe ratio threshold for feature matching', default=0.8)
@@ -470,9 +519,9 @@ def train_on_real():
     log_print("="*50 + "\n")
     
     for epoch in range(1, num_epochs + 1):
-        # PKE 学习开关
+        # PKE 学习开关（与原始 SuperRetina 对齐）
         model.PKE_learn = (epoch >= pke_start_epoch)
-        phase_name = f"PKE {'ON' if model.PKE_learn else 'OFF'}"
+        phase_name = f"PKE {'ON' if model.PKE_learn else 'OFF'} (start_epoch={pke_start_epoch})"
         
         log_print(f'Epoch {epoch}/{num_epochs} | {phase_name}')
         model.train()
