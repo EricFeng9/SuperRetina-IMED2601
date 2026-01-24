@@ -338,6 +338,8 @@ def train_on_real():
     parser.add_argument('--img_size', type=int, default=512, help='Image size for training')
     parser.add_argument('--pke_start_epoch', type=int, default=40, help='Epoch to start PKE learning')
     parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate')
+    parser.add_argument('--geometric_thresh', '-g', type=float, help='RANSAC geometric threshold for PKE', default=0.7)
+    parser.add_argument('--content_thresh', '-c', type=float, help='Lowe ratio threshold for feature matching', default=0.8)
     args = parser.parse_args()
     
     exp_name = args.name
@@ -355,6 +357,12 @@ def train_on_real():
     config['MODEL']['num_epoch'] = args.epoch
     config['MODEL']['batch_size'] = args.batch_size
     config['PKE']['pke_start_epoch'] = args.pke_start_epoch
+    
+    # 覆盖阈值参数（与 train_multimodal_v3_3.py 对齐）
+    if args.geometric_thresh is not None:
+        config['PKE']['geometric_thresh'] = args.geometric_thresh
+    if args.content_thresh is not None:
+        config['PKE']['content_thresh'] = args.content_thresh
     
     # 修改模型保存路径
     save_root = f'./save_baseline/{mode}/{exp_name}'
@@ -382,6 +390,8 @@ def train_on_real():
         train_log.flush()
     
     log_print(f"Using device: {device} | Experiment: {exp_name} | Mode: {mode}")
+    log_print(f"Geometric Threshold: {train_config.get('geometric_thresh', 0.5)}")
+    log_print(f"Content Threshold: {train_config.get('content_thresh', 0.7)}")
     
     # 加载对应的真实数据集
     log_print(f"Loading {mode} dataset...")
