@@ -383,9 +383,29 @@ def validate(model, val_dataset, device, epoch, save_dir, log_file, train_config
             mkpts0 = np.array([kps_f_orig[m.queryIdx] for m in good_matches]) if good_matches else np.array([])
             mkpts1 = np.array([kps_m_orig[m.trainIdx] for m in good_matches]) if good_matches else np.array([])
             
+            # 为了统一评估，将 moving 图像 resize 到和 fix 相同尺寸
+            # 这样匹配点和控制点都在同一尺寸空间中
+            if (h_m, w_m) != (h_f, w_f):
+                # Resize moving 图像到 fix 尺寸
+                img_mov_resized = cv2.resize(img_mov_raw, (w_f, h_f), interpolation=cv2.INTER_LINEAR)
+                
+                # 调整 moving 侧的关键点和匹配点坐标
+                scale_x = w_f / w_m
+                scale_y = h_f / h_m
+                
+                # 只对非空数组进行缩放操作
+                if len(mkpts1) > 0:
+                    mkpts1 = mkpts1 * [scale_x, scale_y]
+                if len(kps_m_orig) > 0:
+                    kps_m_orig = kps_m_orig * [scale_x, scale_y]
+                if len(pts_mov_gt) > 0:
+                    pts_mov_gt = pts_mov_gt * [scale_x, scale_y]
+            else:
+                img_mov_resized = img_mov_raw
+            
             # 使用 measurement.py 进行评估
             metrics = calculate_metrics(
-                img_origin=img_fix_raw, img_result=img_mov_raw,
+                img_origin=img_fix_raw, img_result=img_mov_resized,
                 mkpts0=mkpts0, mkpts1=mkpts1,
                 kpts0=kps_f_orig, kpts1=kps_m_orig,
                 ctrl_pts0=pts_fix_gt, ctrl_pts1=pts_mov_gt
@@ -401,16 +421,19 @@ def validate(model, val_dataset, device, epoch, save_dir, log_file, train_config
             sample_save_dir = os.path.join(epoch_save_dir, sample_id)
             os.makedirs(sample_save_dir, exist_ok=True)
             
-            # 保存原始图像
+            # 保存原始图像（moving 使用统一尺寸后的版本）
             cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_fix.png'), img_fix_raw)
-            cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_moving.png'), img_mov_raw)
+            cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_moving.png'), img_mov_resized)
 
             # 如果有足够的匹配点,进行配准
             if len(mkpts0) >= 4:
                 H_pred, _ = cv2.findHomography(mkpts1, mkpts0, cv2.RANSAC, geometric_thresh)
                 if H_pred is not None:
-                    img_m_gray = cv2.cvtColor(img_mov_raw, cv2.COLOR_RGB2GRAY) if img_mov_raw.ndim == 3 else img_mov_raw
+                    # 确保图像为灰度图（使用统一尺寸后的 moving 图像）
+                    img_m_gray = cv2.cvtColor(img_mov_resized, cv2.COLOR_RGB2GRAY) if img_mov_resized.ndim == 3 else img_mov_resized
                     img_f_gray = cv2.cvtColor(img_fix_raw, cv2.COLOR_RGB2GRAY) if img_fix_raw.ndim == 3 else img_fix_raw
+                    
+                    # 将 moving 配准到 fix 的尺寸空间
                     reg_img = cv2.warpPerspective(img_m_gray, H_pred, (w_f, h_f))
                     cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_moving_result.png'), reg_img)
                     
@@ -432,8 +455,8 @@ def validate(model, val_dataset, device, epoch, save_dir, log_file, train_config
                     checker = compute_checkerboard(img_f_gray, reg_img, n_grid=4)
                     cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_checkerboard.png'), checker)
             
-            # 绘制匹配关系
-            draw_matches(img_fix_raw, kps_f_orig, img_mov_raw, kps_m_orig, good_matches, 
+            # 绘制匹配关系（使用统一尺寸后的图像）
+            draw_matches(img_fix_raw, kps_f_orig, img_mov_resized, kps_m_orig, good_matches, 
                         os.path.join(sample_save_dir, f'{sample_id}_matches.png'))
 
     # 计算平均指标

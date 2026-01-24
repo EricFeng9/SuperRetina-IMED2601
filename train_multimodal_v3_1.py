@@ -52,6 +52,159 @@ def draw_matches(img1, kps1, img2, kps2, matches, save_path):
     
     cv2.imwrite(save_path, out_img)
 
+def validate_on_generated(model, gen_val_loader, device, epoch, save_dir, train_config, gen_val_cache):
+    """
+    在生成数据验证集上进行可视化验证（不计入验证损失）
+    """
+    model.eval()
+    
+    # 从配置中统一读取阈值
+    nms_thresh = train_config.get('nms_thresh', 0.01)
+    content_thresh = train_config.get('content_thresh', 0.7)
+    geometric_thresh = train_config.get('geometric_thresh', 0.7)
+    
+    epoch_save_dir = os.path.join(save_dir, f'epoch{epoch}')
+    os.makedirs(epoch_save_dir, exist_ok=True)
+    
+    # 初始化缓存：随机抽取5个样本
+    if len(gen_val_cache) == 0:
+        print("Initializing Generated Validation Set with 5 Random Samples...")
+        g = torch.Generator()
+        g.manual_seed(2024)
+        
+        dataset_len = len(gen_val_loader.dataset)
+        indices = torch.randperm(dataset_len, generator=g).tolist()
+        selected_indices = set(indices[:5] if dataset_len >= 5 else indices)
+        
+        for batch_idx, data in enumerate(tqdm(gen_val_loader, desc="Caching Generated Val Data")):
+            if batch_idx in selected_indices:
+                gen_val_cache.append(data)
+                if len(gen_val_cache) >= len(selected_indices):
+                    break
+    
+    with torch.no_grad():
+        for data in tqdm(gen_val_cache, desc=f"Gen Val Epoch {epoch}"):
+            img0 = data['image0'].to(device)
+            img1 = data['image1'].to(device)
+            img1_origin = data['image1_origin'].to(device)
+            
+            # Extract sample name
+            pair_names = data.get('pair_names', [['sample_unknown']])[0]
+            if isinstance(pair_names, (list, tuple)):
+                sample_name = pair_names[0]
+            else:
+                sample_name = pair_names
+            
+            sample_id = os.path.splitext(os.path.basename(str(sample_name)))[0]
+            
+            # 提取跨模态特征
+            det_fix, desc_fix = model.network(img0)
+            det_mov, desc_mov = model.network(img1)
+            
+            for b in range(img0.shape[0]):
+                # 有效区域屏蔽
+                valid_mask = (img1[b:b+1] > 0.05).float()
+                valid_mask = -F.max_pool2d(-valid_mask, kernel_size=5, stride=1, padding=2)
+                det_mov_masked = det_mov[b:b+1] * valid_mask
+                
+                # 提取关键点
+                kps_fix = nms(det_fix[b:b+1], nms_thresh=nms_thresh, nms_size=5)[0]
+                kps_mov = nms(det_mov_masked, nms_thresh=nms_thresh, nms_size=5)[0]
+                
+                # 兜底策略
+                if len(kps_fix) < 10:
+                    flat_det = det_fix[b, 0].view(-1)
+                    _, idx = torch.topk(flat_det, min(100, flat_det.numel()))
+                    y = idx // det_fix.shape[3]
+                    x = idx % det_fix.shape[3]
+                    kps_fix = torch.stack([x, y], dim=1).float()
+
+                if len(kps_mov) < 10:
+                    flat_det = det_mov_masked[0, 0].view(-1)
+                    if flat_det.max() > 0:
+                        _, idx = torch.topk(flat_det, min(100, flat_det.numel()))
+                        y = idx // det_mov.shape[3]
+                        x = idx % det_mov.shape[3]
+                        kps_mov = torch.stack([x, y], dim=1).float()
+                
+                img_reg = None
+                good = []
+
+                if len(kps_fix) >= 4 and len(kps_mov) >= 4:
+                    desc_fix_samp = sample_keypoint_desc(kps_fix[None], desc_fix[b:b+1], s=8)[0]
+                    desc_mov_samp = sample_keypoint_desc(kps_mov[None], desc_mov[b:b+1], s=8)[0]
+                    
+                    d1 = desc_fix_samp.permute(1, 0).cpu().numpy()
+                    d2 = desc_mov_samp.permute(1, 0).cpu().numpy()
+                    
+                    bf = cv2.BFMatcher()
+                    matches = bf.knnMatch(d1, d2, k=2)
+                    
+                    for m, n in matches:
+                        if m.distance < content_thresh * n.distance:
+                            good.append(m)
+                
+                if len(good) >= 4:
+                    src_pts = np.float32([kps_fix[m.queryIdx].cpu().numpy() for m in good]).reshape(-1, 1, 2)
+                    dst_pts = np.float32([kps_mov[m.trainIdx].cpu().numpy() for m in good]).reshape(-1, 1, 2)
+                    M, mask = cv2.findHomography(dst_pts, src_pts, cv2.RANSAC, geometric_thresh)
+                    
+                    if M is not None:
+                        img_warped_np = img1[b, 0].cpu().numpy() * 255.0
+                        h, w = img_warped_np.shape
+                        img_reg = cv2.warpPerspective(img_warped_np, M, (w, h))
+                
+                # 保存可视化结果（加 gen_ 前缀）
+                sample_save_dir = os.path.join(epoch_save_dir, f'gen_{sample_id}')
+                os.makedirs(sample_save_dir, exist_ok=True)
+                
+                fix_np = (img0[b, 0].cpu().numpy() * 255).astype(np.uint8)
+                mov_in_np = (img1_origin[b, 0].cpu().numpy() * 255).astype(np.uint8)
+                mov_aff_np = (img1[b, 0].cpu().numpy() * 255).astype(np.uint8)
+                
+                # 绘制关键点
+                fix_with_kps = cv2.cvtColor(fix_np, cv2.COLOR_GRAY2BGR)
+                for kp in kps_fix:
+                    cv2.circle(fix_with_kps, (int(kp[0]), int(kp[1])), 3, (0, 255, 0), -1)
+                
+                mov_aff_with_kps = cv2.cvtColor(mov_aff_np, cv2.COLOR_GRAY2BGR)
+                for kp in kps_mov:
+                    cv2.circle(mov_aff_with_kps, (int(kp[0]), int(kp[1])), 3, (0, 255, 0), -1)
+
+                # 原始图像可视化
+                cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_fix_raw.png'), fix_np)
+                cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_moving_origin_raw.png'), mov_in_np)
+                cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_moving_warped_raw.png'), mov_aff_np)
+
+                cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_fixed_kps.png'), fix_with_kps)
+                cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_affined_moving_kps.png'), mov_aff_with_kps)
+
+                reg_np = img_reg.astype(np.uint8) if img_reg is not None else fix_np
+                cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_registered.png'), reg_np)
+
+                # 棋盘格拼接图
+                h_img, w_img = fix_np.shape
+                tile_h = h_img // 4
+                tile_w = w_img // 4
+                checker = np.zeros_like(fix_np)
+                for i in range(4):
+                    for j in range(4):
+                        y0 = i * tile_h
+                        y1 = h_img if i == 3 else (i + 1) * tile_h
+                        x0 = j * tile_w
+                        x1 = w_img if j == 3 else (j + 1) * tile_w
+                        if (i + j) % 2 == 0:
+                            checker[y0:y1, x0:x1] = fix_np[y0:y1, x0:x1]
+                        else:
+                            checker[y0:y1, x0:x1] = reg_np[y0:y1, x0:x1]
+                cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_fix_registered_checkerboard.png'), checker)
+                
+                # 绘制匹配关系
+                draw_matches(fix_np, kps_fix.cpu().numpy(), mov_aff_np, kps_mov.cpu().numpy(), good, 
+                             os.path.join(sample_save_dir, f'{sample_id}_matches.png'))
+    
+    return gen_val_cache
+
 def validate(model, val_dataset, device, epoch, save_dir, log_file, train_config, mode):
     """
     验证函数:评估模型在真实数据集上的表现
@@ -185,6 +338,19 @@ def validate(model, val_dataset, device, epoch, save_dir, log_file, train_config
             # 保存原始图像
             cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_fix.png'), img_fix_raw)
             cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_moving.png'), img_mov_raw)
+            
+            # 绘制并保存关键点可视化
+            img_fix_with_kps = cv2.cvtColor(img_fix_raw if img_fix_raw.ndim == 2 else cv2.cvtColor(img_fix_raw, cv2.COLOR_RGB2GRAY), cv2.COLOR_GRAY2BGR)
+            img_mov_with_kps = cv2.cvtColor(img_mov_raw if img_mov_raw.ndim == 2 else cv2.cvtColor(img_mov_raw, cv2.COLOR_RGB2GRAY), cv2.COLOR_GRAY2BGR)
+            
+            for kp in kps_f_orig:
+                cv2.circle(img_fix_with_kps, (int(kp[0]), int(kp[1])), 3, (0, 255, 0), -1)
+            
+            for kp in kps_m_orig:
+                cv2.circle(img_mov_with_kps, (int(kp[0]), int(kp[1])), 3, (0, 255, 0), -1)
+            
+            cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_fix_kps.png'), img_fix_with_kps)
+            cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_moving_kps.png'), img_mov_with_kps)
 
             # 如果有足够的匹配点,进行配准
             if len(mkpts0) >= 4:
@@ -318,7 +484,17 @@ def train_multimodal():
     elif reg_type == 'octfa':
         val_set = OCTFADataset(root_dir='dataset/operation_pre_filtered_octfa', split='val', mode='fa2oct')
     
+    # 生成数据验证集（仅用于可视化，不计入验证损失）
+    gen_val_set = MultiModalDataset(
+        root_dir=root_dir, 
+        mode=reg_type, 
+        split='val', 
+        img_size=img_size, 
+        df=df
+    )
+    
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, num_workers=4)
+    gen_val_loader = DataLoader(gen_val_set, batch_size=1, shuffle=False, num_workers=4)
     
     # 初始化多模态 SuperRetina 模型
     model = SuperRetinaMultimodal(train_config, device=device)
@@ -352,8 +528,11 @@ def train_multimodal():
     best_val_error = float('inf')
 
     # 初始验证
-    log_print("Running initial validation...")
+    gen_val_cache = []  # 生成数据验证集缓存
+    log_print("Running initial validation on real dataset...")
     _ = validate(model, val_set, device, 0, save_root, log_file, train_config, reg_type)
+    log_print("Running initial validation on generated dataset (visualization only)...")
+    gen_val_cache = validate_on_generated(model, gen_val_loader, device, 0, save_root, train_config, gen_val_cache)
 
     pke_start_epoch = train_config.get('pke_start_epoch', 40) # 默认40以后开启PKE
     
@@ -450,7 +629,11 @@ def train_multimodal():
         
         # 每 5 个 Epoch 进行一次验证并保存模型
         if epoch % 5 == 0:
+            # 在真实数据集上验证（计入验证损失）
             mean_error = validate(model, val_set, device, epoch, save_root, log_file, train_config, reg_type)
+            
+            # 在生成数据集上验证（仅可视化，不计入损失）
+            gen_val_cache = validate_on_generated(model, gen_val_loader, device, epoch, save_root, train_config, gen_val_cache)
             
             state = {
                 'net': model.state_dict(),
