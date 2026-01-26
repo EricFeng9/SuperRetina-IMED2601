@@ -403,6 +403,8 @@ def train_multimodal():
 
     pke_start_epoch = train_config.get('pke_start_epoch', 40) # 默认40以后开启PKE
     
+    # 训练循环
+    for epoch in range(1, num_epochs + 1):
         if epoch <= 20:
             phase = 3 # Enable PKE logic
             pke_supervised = True
