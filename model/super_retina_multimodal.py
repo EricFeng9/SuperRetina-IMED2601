@@ -448,10 +448,11 @@ class SuperRetinaMultimodal(nn.Module):
         return loss, True
     
     def forward(self, fix_img, mov_img, label_point_positions=None, value_map=None, learn_index=None,
-                phase=3, vessel_mask=None, H_0to1=None, pke_supervised=False):
+                phase=3, vessel_mask=None, H_0to1=None, pke_supervised=False, vessel_weight=1.0):
         """
         主前向传播逻辑
         :param pke_supervised: 是否开启强监督 PKE 模式 (使用 GT 注入)
+        :param vessel_weight: 血管引导权重 (Vessel-Guided Loss Weight)，用于加权描述子 Loss
         """
         
         # 1. 提取固定图像（CF 模态）与运动图像的特征
@@ -544,10 +545,14 @@ class SuperRetinaMultimodal(nn.Module):
                 # 简单修复: 强制转换类型
                 value_map[learn_index] = value_map_update.to(value_map.dtype)
 
-            # 联合期描述子 Loss (始终使用 GT 辅助采样，哪怕是自监督阶段，利用 GT H 采样 Triplet 也是最稳的)
+            # 联合期描述子 Loss (始终使用 GT 辅助采样)
             loss_descriptor, _ = self.descriptor_loss_warmup(
                 label_point_positions, descriptor_pred_fix, descriptor_pred_mov, H_0to1
             )
+            
+            # v5: Vessel-Guided Loss Weighting
+            # 强化血管区域特征的学习权重 (从 10.0 -> 1.0 衰减)
+            loss_descriptor = loss_descriptor * vessel_weight
             
             return loss_detector + loss_descriptor, 0, loss_detector.detach().sum(), \
                    loss_descriptor.detach().sum(), enhanced_label_pts, \
