@@ -309,11 +309,11 @@ def validate(model, val_dataset, device, epoch, save_dir, log_file, train_config
     log_f.write(f"Overall SR_MAE (Success Rate @10px): {summary['SR_MAE']*100:.2f}%\n")
     log_f.write(f"Average Repeatability:              {summary['Rep']*100:.2f}%\n")
     log_f.write(f"Average Matching Inliers Ratio:     {summary['MIR']*100:.2f}%\n")
-    log_f.write(f"Mean Registration Error:            {summary['mean_error']:.2f} px\n")
+    log_f.write(f"Overall MACE (Mean Corner Error):   {summary['mean_error']:.2f} px\n")
     log_f.write(f"Max Registration Error (Average):   {summary['max_error']:.2f} px\n")
     log_f.close()
     
-    print(f'Validation Epoch {epoch} Finished. Mean Error: {summary["mean_error"]:.2f} px, SR_ME: {summary["SR_ME"]*100:.2f}%')
+    print(f'Validation Epoch {epoch} Finished. MACE: {summary["mean_error"]:.2f} px, SR_ME: {summary["SR_ME"]*100:.2f}%')
     return summary['mean_error']
 
 def train_multimodal():
@@ -560,31 +560,31 @@ def train_multimodal():
             torch.save(state, os.path.join(latest_dir, 'checkpoint.pth'))
             # 保存epoch信息
             with open(os.path.join(latest_dir, 'checkpoint_info.txt'), 'w') as f:
-                f.write(f'Latest Checkpoint\nEpoch: {epoch}\nMean Error: {mean_error:.4f} px\n')
+                f.write(f'Latest Checkpoint\nEpoch: {epoch}\nMACE: {mean_error:.4f} px\n')
             
-            # 保存 Mean Error 表现最好的模型 (越小越好)
+            # 保存 MACE 表现最好的模型 (越小越好)
             if mean_error < best_mean_error:
-                log_print(f"New Best Mean Error: {mean_error:.4f} px (Previous: {best_mean_error:.4f} px)")
+                log_print(f"New Best MACE: {mean_error:.4f} px (Previous: {best_mean_error:.4f} px)")
                 best_mean_error = mean_error
                 best_dir = os.path.join(save_root, 'bestcheckpoint')
                 os.makedirs(best_dir, exist_ok=True)
                 torch.save(state, os.path.join(best_dir, 'checkpoint.pth'))
                 # 保存epoch信息
                 with open(os.path.join(best_dir, 'checkpoint_info.txt'), 'w') as f:
-                    f.write(f'Best Checkpoint\nEpoch: {epoch}\nMean Error: {mean_error:.4f} px\n')
+                    f.write(f'Best Checkpoint\nEpoch: {epoch}\nMACE: {mean_error:.4f} px\n')
             
             # 早停机制 (仅在 epoch >= 100 后启用)
             if epoch >= 100:
                 if mean_error < best_val_error:
                     best_val_error = mean_error
                     patience_counter = 0
-                    log_print(f'[Early Stopping] Validation Mean Error improved to {best_val_error:.4f} px. Reset patience counter.')
+                    log_print(f'[Early Stopping] Validation MACE improved to {best_val_error:.4f} px. Reset patience counter.')
                 else:
                     patience_counter += 1
-                    log_print(f'[Early Stopping] Validation Mean Error did not improve. Patience: {patience_counter}/{patience}')
+                    log_print(f'[Early Stopping] Validation MACE did not improve. Patience: {patience_counter}/{patience}')
                 
                 if patience_counter >= patience:
-                    log_print(f'Early stopping triggered at epoch {epoch}. Best validation Mean Error: {best_val_error:.4f} px')
+                    log_print(f'Early stopping triggered at epoch {epoch}. Best validation MACE: {best_val_error:.4f} px')
                     break
     
     # 训练结束，关闭日志文件
