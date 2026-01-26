@@ -44,6 +44,41 @@ from gen_data_enhance_v2 import apply_domain_randomization, save_batch_visualiza
 # ============================================================================
 
 
+def compute_corner_error(H_est, H_gt, height, width):
+    """计算角点平均误差 (MACE)"""
+    corners = np.array([[0, 0], [width, 0], [width, height], [0, height]], dtype=np.float32)
+    corners_homo = np.concatenate([corners, np.ones((4, 1), dtype=np.float32)], axis=1)
+    
+    # GT 变换后的角点
+    corners_gt_homo = (H_gt @ corners_homo.T).T
+    corners_gt = corners_gt_homo[:, :2] / (corners_gt_homo[:, 2:] + 1e-6)
+    
+    # 预测变换后的角点
+    corners_est_homo = (H_est @ corners_homo.T).T
+    corners_est = corners_est_homo[:, :2] / (corners_est_homo[:, 2:] + 1e-6)
+    
+    try:
+        errors = np.sqrt(np.sum((corners_est - corners_gt)**2, axis=1))
+        mace = np.mean(errors)
+    except:
+        mace = float('inf')
+    return mace
+
+def compute_checkerboard(img1, img2, n_grid=4):
+    """计算棋盘格可视化"""
+    if img1.ndim == 3: img1 = cv2.cvtColor(img1, cv2.COLOR_RGB2GRAY) if img1.shape[2] == 3 else img1.squeeze()
+    if img2.ndim == 3: img2 = cv2.cvtColor(img2, cv2.COLOR_RGB2GRAY) if img2.shape[2] == 3 else img2.squeeze()
+    h, w = img1.shape[:2]
+    if img2.shape[:2] != (h, w): img2 = cv2.resize(img2, (w, h))
+    grid_h, grid_w = h // n_grid, w // n_grid
+    checkerboard = np.zeros_like(img1)
+    for i in range(n_grid):
+        for j in range(n_grid):
+            y_s, y_e = i * grid_h, (i + 1) * grid_h if i < n_grid - 1 else h
+            x_s, x_e = j * grid_w, (j + 1) * grid_w if j < n_grid - 1 else w
+            checkerboard[y_s:y_e, x_s:x_e] = img1[y_s:y_e, x_s:x_e] if (i + j) % 2 == 0 else img2[y_s:y_e, x_s:x_e]
+    return checkerboard
+
 def draw_matches(img1, kps1, img2, kps2, matches, save_path):
     """
     在两张图像之间绘制匹配连线
@@ -194,19 +229,39 @@ def validate(model, val_dataset, device, epoch, save_dir, log_file, train_config
             else:
                 img_mov_resized = img_mov_raw
             
-            # 使用 measurement.py 进行评估
+            # 计算 GT 单应矩阵
+            if len(pts_fix_gt) >= 4:
+                H_gt, _ = cv2.findHomography(pts_mov_gt, pts_fix_gt, cv2.RANSAC, 5.0)
+            else:
+                H_gt = None
+
+            # 计算预测单应矩阵
+            H_pred = None
+            if len(mkpts0) >= 4:
+                H_pred, _ = cv2.findHomography(mkpts1, mkpts0, cv2.RANSAC, geometric_thresh)
+            
+            # 最终估计矩阵: 成功则用 H_pred, 失败则用单位阵 (不注册)
+            H_est = H_pred if H_pred is not None else np.eye(3)
+            
+            # 计算角点误差 MACE
+            mace = compute_corner_error(H_est, H_gt, h_f, w_f) if H_gt is not None else float('inf')
+
+            # 使用 measurement.py 获取其他指标 (Rep, MIR)
             metrics = calculate_metrics(
                 img_origin=img_fix_raw, img_result=img_mov_resized,
                 mkpts0=mkpts0, mkpts1=mkpts1,
                 kpts0=kps_f_orig, kpts1=kps_m_orig,
-                ctrl_pts0=pts_fix_gt, ctrl_pts1=pts_mov_gt
+                ctrl_pts0=pts_fix_gt, ctrl_pts1=pts_mov_gt,
+                H_gt=H_gt
             )
+            # 覆盖 mean_error 为 MACE
+            metrics['mean_error'] = mace
             
             all_metrics.append(metrics)
             
             log_f.write(f"ID: {sample_id} | SR_ME: {metrics['SR_ME']} | SR_MAE: {metrics['SR_MAE']} | "
                        f"Rep: {metrics['Rep']:.4f} | MIR: {metrics['MIR']:.4f} | "
-                       f"MeanErr: {metrics['mean_error']:.2f} px\n")
+                       f"MACE: {metrics['mean_error']:.2f} px\n")
             
             # 保存可视化结果
             sample_save_dir = os.path.join(epoch_save_dir, sample_id)
@@ -226,44 +281,27 @@ def validate(model, val_dataset, device, epoch, save_dir, log_file, train_config
             img_mov_kpts = cv2.drawKeypoints(img_mov_resized, kp_m_cv, None, color=(0, 255, 0), flags=0)
             cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_moving_kpts.png'), img_mov_kpts)
 
-            # 如果有足够的匹配点,进行配准
-            if len(mkpts0) >= 4:
-                H_pred, _ = cv2.findHomography(mkpts1, mkpts0, cv2.RANSAC, geometric_thresh)
-                if H_pred is not None:
-                    # 确保图像为灰度图（使用统一尺寸后的 moving 图像）
-                    img_m_gray = cv2.cvtColor(img_mov_resized, cv2.COLOR_RGB2GRAY) if img_mov_resized.ndim == 3 else img_mov_resized
-                    img_f_gray = cv2.cvtColor(img_fix_raw, cv2.COLOR_RGB2GRAY) if img_fix_raw.ndim == 3 else img_fix_raw
-                    
-                    # 将 moving 配准到 fix 的尺寸空间
-                    reg_img = cv2.warpPerspective(img_m_gray, H_pred, (w_f, h_f))
-                    cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_moving_result.png'), reg_img)
-                    
-                    # 计算棋盘格可视化
-                    def compute_checkerboard(img1, img2, n_grid=4):
-                        if img1.ndim == 3: img1 = cv2.cvtColor(img1, cv2.COLOR_RGB2GRAY) if img1.shape[2] == 3 else img1.squeeze()
-                        if img2.ndim == 3: img2 = cv2.cvtColor(img2, cv2.COLOR_RGB2GRAY) if img2.shape[2] == 3 else img2.squeeze()
-                        h, w = img1.shape[:2]
-                        if img2.shape[:2] != (h, w): img2 = cv2.resize(img2, (w, h))
-                        grid_h, grid_w = h // n_grid, w // n_grid
-                        checkerboard = np.zeros_like(img1)
-                        for i in range(n_grid):
-                            for j in range(n_grid):
-                                y_s, y_e = i * grid_h, (i + 1) * grid_h if i < n_grid - 1 else h
-                                x_s, x_e = j * grid_w, (j + 1) * grid_w if j < n_grid - 1 else w
-                                checkerboard[y_s:y_e, x_s:x_e] = img1[y_s:y_e, x_s:x_e] if (i + j) % 2 == 0 else img2[y_s:y_e, x_s:x_e]
-                        return checkerboard
-                    
-                    checker = compute_checkerboard(img_f_gray, reg_img, n_grid=4)
-                    cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_checkerboard.png'), checker)
+            # 无论是否有足够的匹配点，都进行可视化保存
+            # 确保图像为灰度图（用于配准和棋盘格）
+            img_m_gray = cv2.cvtColor(img_mov_resized, cv2.COLOR_RGB2GRAY) if img_mov_resized.ndim == 3 else img_mov_resized
+            img_f_gray = cv2.cvtColor(img_fix_raw, cv2.COLOR_RGB2GRAY) if img_fix_raw.ndim == 3 else img_fix_raw
+            
+            # 使用 H_est (可能是单位阵) 配准并保存结果
+            reg_img = cv2.warpPerspective(img_m_gray, H_est, (w_f, h_f))
+            cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_moving_result.png'), reg_img)
+            
+            # 记录棋盘格
+            checker = compute_checkerboard(img_f_gray, reg_img, n_grid=4)
+            cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_checkerboard.png'), checker)
             
             # 绘制匹配关系（使用统一尺寸后的图像）
             draw_matches(img_fix_raw, kps_f_orig, img_mov_resized, kps_m_orig, good_matches, 
                         os.path.join(sample_save_dir, f'{sample_id}_matches.png'))
 
-    # 计算平均指标
+    # 计算平均指标 (包含失败样本)
     summary = {}
     for key in ['SR_ME', 'SR_MAE', 'Rep', 'MIR', 'mean_error', 'max_error']:
-        vals = [m[key] for m in all_metrics if m[key] != float('inf')]
+        vals = [m[key] for m in all_metrics]
         summary[key] = np.mean(vals) if vals else 0.0
     
     log_f.write(f"\n--- Validation Summary ---\n")
