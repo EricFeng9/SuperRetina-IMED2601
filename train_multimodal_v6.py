@@ -314,17 +314,30 @@ def validate(model, val_dataset, device, epoch, save_dir, log_file, train_config
         vals = [m[key] for m in all_metrics]
         summary[key] = np.mean(vals) if vals else 0.0
     
+    # 计算 AUC@10 (Area Under Curve of Cumulative Error Distribution up to 10px)
+    errors = np.array([m['mean_error'] for m in all_metrics])
+    # 处理 inf 误差 (配准失败)
+    errors[np.isinf(errors)] = 1e9 
+    
+    thresholds = np.linspace(0, 10, 1000) # 0到10px，1000个采样点
+    # 计算每个阈值下的累积成功率 (CDF)
+    success_rates = [np.mean(errors <= t) for t in thresholds]
+    # 计算曲线下面积 (归一化到 0-1 范围，本来积分是 0-10，除以10做归一化)
+    # 实际上 AUC@10 通常指 success rate 的平均值，或者积分值。这里归一化到 0-1 更直观。
+    auc_10 = np.trapz(success_rates, thresholds) / 10.0
+    
     log_f.write(f"\n--- Validation Summary ---\n")
     log_f.write(f"Overall SR_ME (Success Rate @5px):  {summary['SR_ME']*100:.2f}%\n")
     log_f.write(f"Overall SR_MAE (Success Rate @10px): {summary['SR_MAE']*100:.2f}%\n")
+    log_f.write(f"AUC@10:                             {auc_10:.4f}\n")
     log_f.write(f"Average Repeatability:              {summary['Rep']*100:.2f}%\n")
     log_f.write(f"Average Matching Inliers Ratio:     {summary['MIR']*100:.2f}%\n")
     log_f.write(f"Overall MACE (Mean Corner Error):   {summary['mean_error']:.2f} px\n")
     log_f.write(f"Max Registration Error (Average):   {summary['max_error']:.2f} px\n")
     log_f.close()
     
-    print(f'Validation Epoch {epoch} Finished. MACE: {summary["mean_error"]:.2f} px, SR_ME: {summary["SR_ME"]*100:.2f}%')
-    return summary['mean_error']
+    print(f'Validation Epoch {epoch} Finished. AUC@10: {auc_10:.4f}, MACE: {summary["mean_error"]:.2f} px')
+    return auc_10
 
 def train_multimodal():
     """
@@ -438,12 +451,39 @@ def train_multimodal():
         os.makedirs(value_map_save_dir)
         
     value_maps_running = {} if not is_value_map_save else None
-    best_mean_error = float('inf')
+    
+    # 最佳指标追踪 (AUC@10 越大越好)
+    best_auc = 0.0
     
     # 早停机制变量 (仅在epoch >= 100后启用)
-    patience = 5  # 验证损失连续5次不下降则早停
+    patience = 5  # 验证指标连续5次不提升则早停
     patience_counter = 0
-    best_val_error = float('inf')
+    best_val_auc = 0.0
+
+    # 初始验证
+    log_print("Running initial validation...")
+    _ = validate(model, val_set, device, 0, save_root, log_file, train_config, reg_type)
+
+    # v6: 全程启用 GT-Init PKE
+    pke_start_epoch = 0 
+    
+    # ... (the for loop starts here)
+    # I'll rely on chunk matching. I am replacing the variable init part.
+    # And then I need to update the save logic inside the loop.
+    # It is safer to update the VARIABLE INIT here, and then update the LOOP BODY in a separate call or same call if contiguous.
+    # They are separated by `for epoch in range...` which is large.
+    # Let's fix the init variables first.
+    
+    # Wait, replace_file_content replaces a CONTIGUOUS block. 
+    # The variable init and the saving logic (at end of loop) are far apart.
+    # I should do this in two steps or use MultiReplace (available).
+    # I will use replace_file_content for the Init first.
+    
+    # Actually, I'll use MultiReplaceFileContent to do both at once if possible, or just two calls.
+    # Let's use two calls to be safe and simple.
+    
+    # First call: Variable Init.
+
 
     # 初始验证
     log_print("Running initial validation...")
@@ -491,8 +531,12 @@ def train_multimodal():
             vessel_keypoints_batch = []
             
             for b in range(vessel_mask_full.shape[0]):
-                # 转换为 numpy 格式 (H, W)
-                mask_np = (vessel_mask_full[b, 0].cpu().numpy() * 255).astype(np.uint8)
+                # 转换为 numpy 格式 (H, W) - 修复数值溢出问题
+                mask_tensor = vessel_mask_full[b, 0].cpu()
+                if mask_tensor.max() <= 1.0:
+                    mask_np = (mask_tensor.numpy() * 255).astype(np.uint8)
+                else:
+                    mask_np = mask_tensor.numpy().astype(np.uint8)
                 
                 # 提取关键点
                 try:
@@ -501,9 +545,14 @@ def train_multimodal():
                     try:
                         keypoints = extract_vessel_keypoints_fallback(mask_np, min_distance=8)
                     except:
-                        # 如果提取失败，使用原始掩码（但这会导致之前的问题）
+                        # 如果提取失败，使用原始掩码
                         keypoints = (mask_np > 127).astype(np.float32)
                         print("点位提取失败")
+                
+                # 调试: 检查点位数量
+                # if epoch == 1 and step_idx < 5:
+                #     print(f"Sample {b}: Found {np.sum(keypoints)} vessel keypoints")
+                    
                 vessel_keypoints_batch.append(torch.from_numpy(keypoints).float())
 
             # 转换回 tensor [B, 1, H, W]
@@ -554,13 +603,13 @@ def train_multimodal():
         
         # 每 5 个 Epoch 进行一次验证并保存模型
         if epoch % 5 == 0:
-            mean_error = validate(model, val_set, device, epoch, save_root, log_file, train_config, reg_type)
+            auc_test = validate(model, val_set, device, epoch, save_root, log_file, train_config, reg_type)
             
             state = {
                 'net': model.state_dict(),
                 'optimizer': optimizer.state_dict(),
                 'epoch': epoch,
-                'mean_error': mean_error
+                'auc': auc_test
             }
             
             # 保存最新模型
@@ -569,31 +618,31 @@ def train_multimodal():
             torch.save(state, os.path.join(latest_dir, 'checkpoint.pth'))
             # 保存epoch信息
             with open(os.path.join(latest_dir, 'checkpoint_info.txt'), 'w') as f:
-                f.write(f'Latest Checkpoint\nEpoch: {epoch}\nMACE: {mean_error:.4f} px\n')
+                f.write(f'Latest Checkpoint\nEpoch: {epoch}\nAUC@10: {auc_test:.4f}\n')
             
-            # 保存 MACE 表现最好的模型 (越小越好)
-            if mean_error < best_mean_error:
-                log_print(f"New Best MACE: {mean_error:.4f} px (Previous: {best_mean_error:.4f} px)")
-                best_mean_error = mean_error
+            # 保存 AUC 表现最好的模型 (越大越好)
+            if auc_test > best_auc:
+                log_print(f"New Best AUC: {auc_test:.4f} (Previous: {best_auc:.4f})")
+                best_auc = auc_test
                 best_dir = os.path.join(save_root, 'bestcheckpoint')
                 os.makedirs(best_dir, exist_ok=True)
                 torch.save(state, os.path.join(best_dir, 'checkpoint.pth'))
                 # 保存epoch信息
                 with open(os.path.join(best_dir, 'checkpoint_info.txt'), 'w') as f:
-                    f.write(f'Best Checkpoint\nEpoch: {epoch}\nMACE: {mean_error:.4f} px\n')
+                    f.write(f'Best Checkpoint\nEpoch: {epoch}\nAUC@10: {auc_test:.4f}\n')
             
             # 早停机制 (仅在 epoch >= 100 后启用)
             if epoch >= 100:
-                if mean_error < best_val_error:
-                    best_val_error = mean_error
+                if auc_test > best_val_auc:
+                    best_val_auc = auc_test
                     patience_counter = 0
-                    log_print(f'[Early Stopping] Validation MACE improved to {best_val_error:.4f} px. Reset patience counter.')
+                    log_print(f'[Early Stopping] Validation AUC improved to {best_val_auc:.4f}. Reset patience counter.')
                 else:
                     patience_counter += 1
-                    log_print(f'[Early Stopping] Validation MACE did not improve. Patience: {patience_counter}/{patience}')
+                    log_print(f'[Early Stopping] Validation AUC did not improve. Patience: {patience_counter}/{patience}')
                 
                 if patience_counter >= patience:
-                    log_print(f'Early stopping triggered at epoch {epoch}. Best validation MACE: {best_val_error:.4f} px')
+                    log_print(f'Early stopping triggered at epoch {epoch}. Best validation AUC: {best_val_auc:.4f}')
                     break
     
     # 训练结束，关闭日志文件
