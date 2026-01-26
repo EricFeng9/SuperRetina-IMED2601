@@ -285,10 +285,37 @@ def validate(model, val_dataset, device, epoch, save_dir, log_file, train_config
             kp_f_cv = [cv2.KeyPoint(x=float(pt[0]), y=float(pt[1]), size=10) for pt in kps_f_orig]
             # 注意: drawKeypoints 会自动处理灰度/彩色输入，返回彩色图像
             img_fix_kpts = cv2.drawKeypoints(img_fix_raw, kp_f_cv, None, color=(0, 255, 0), flags=0)
+            
+            # --- DEBUG INFO: 在图片上打印调试信息 ---
+            # 统计 Heatmap 极值，判断是否全黑或响应过低
+            det_max = det_fix.max().item()
+            det_mean = det_fix.mean().item()
+            txt = f"Det Max: {det_max:.4f} Mean: {det_mean:.4f} Pts: {len(kps_f_orig)}"
+            cv2.putText(img_fix_kpts, txt, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+            
+            # 统计 GT Mask 信息 (如果有) - 既然是 val，我们可以尝试从 memory 或 disk 再次验证 mask 状态
+            # 这里简单打印一下本次检测到的点坐标范围，看是否集中在 (0,0)
+            if len(kps_f_orig) > 0:
+                min_x, max_x = kps_f_orig[:, 0].min(), kps_f_orig[:, 0].max()
+                min_y, max_y = kps_f_orig[:, 1].min(), kps_f_orig[:, 1].max()
+                t2 = f"X: {min_x:.1f}-{max_x:.1f} Y: {min_y:.1f}-{max_y:.1f}"
+                cv2.putText(img_fix_kpts, t2, (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+
             cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_fix_kpts.png'), img_fix_kpts)
 
             kp_m_cv = [cv2.KeyPoint(x=float(pt[0]), y=float(pt[1]), size=10) for pt in kps_m_orig]
             img_mov_kpts = cv2.drawKeypoints(img_mov_resized, kp_m_cv, None, color=(0, 255, 0), flags=0)
+            
+            # --- DEBUG INFO MOVING ---
+            det_m_max = det_mov.max().item()
+            det_m_mean = det_mov.mean().item()
+            valid_area_ratio = valid_mask.mean().item()
+            txt_m = f"Det Max: {det_m_max:.4f} Mean: {det_m_mean:.4f} Pts: {len(kps_m_orig)}"
+            cv2.putText(img_mov_kpts, txt_m, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+            
+            t2_m = f"Msk Ratio: {valid_area_ratio:.2f}"
+            cv2.putText(img_mov_kpts, t2_m, (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+            
             cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_moving_kpts.png'), img_mov_kpts)
 
             # 无论是否有足够的匹配点，都进行可视化保存
