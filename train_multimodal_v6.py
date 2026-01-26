@@ -160,11 +160,9 @@ def validate(model, val_dataset, device, epoch, save_dir, log_file, train_config
             img0_tensor = transform(img_fix_gray).unsqueeze(0).to(device)
             img1_tensor = transform(img_mov_gray).unsqueeze(0).to(device)
             
-            # v4.1: Validation 阶段也必须反色 CF
-            if mode in ['cffa', 'cfoct', 'cfocta']:
-                 img0_input = 1.0 - img0_tensor
-            else:
-                 img0_input = img0_tensor
+            # v4.1 Logic REMOVED for v6: 验证阶段保持原始输入，不反色
+            # v6 模型 (Fix Encoder) 已经设计为直接处理暗血管特征
+            img0_input = img0_tensor
             
             # 提取跨模态特征
             det_fix, desc_fix = model.network(img0_input, mode='fix')
@@ -576,9 +574,9 @@ def train_multimodal():
                         keypoints = (mask_np > 127).astype(np.float32)
                         print("点位提取失败")
                 
-                # 调试: 检查点位数量
-                # if epoch == 1 and step_idx < 5:
-                #     print(f"Sample {b}: Found {np.sum(keypoints)} vessel keypoints")
+                # 调试: 检查点位数量 (打印前两个 batch 的采样情况)
+                if step_idx < 2:
+                    print(f"Sample {b}: Found {np.sum(keypoints)} vessel keypoints")
                     
                 vessel_keypoints_batch.append(torch.from_numpy(keypoints).float())
 
