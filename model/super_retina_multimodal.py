@@ -448,14 +448,14 @@ class SuperRetinaMultimodal(nn.Module):
         return loss, True
     
     def forward(self, fix_img, mov_img, label_point_positions=None, value_map=None, learn_index=None,
-                phase=3, vessel_mask=None, H_0to1=None, pke_supervised=False, vessel_weight=1.0):
+                phase=3, vessel_mask=None, H_0to1=None, pke_supervised=False):
         """
-        主前向传播逻辑
-        :param pke_supervised: 是否开启强监督 PKE 模式 (使用 GT 注入)
-        :param vessel_weight: 血管引导权重 (Vessel-Guided Loss Weight)，用于加权描述子 Loss
+        v6 主前向传播逻辑 (Dual-Path + GT Anchor + Mask Constraint)
+        :param label_point_positions: GT Keypoints (Anchors)
+        :param vessel_mask: GT Vessel Mask (用于背景抑制)
         """
         
-        # 1. 提取固定图像（CF 模态）与运动图像的特征
+        # 1. 提取特征 (Dual-Path or Shared, controlled by init)
         detector_pred_fix, descriptor_pred_fix = self.network(fix_img, mode='fix')
         detector_pred_mov, descriptor_pred_mov = self.network(mov_img, mode='mov')
         
@@ -473,19 +473,12 @@ class SuperRetinaMultimodal(nn.Module):
         loss_detector = torch.tensor(0., requires_grad=True).to(fix_img)
         loss_descriptor = torch.tensor(0., requires_grad=True).to(fix_img)
 
-        # =========================================================
-        # Phase 1 & 2: 热身期 & 几何一致性预热 (PKE OFF) - v4已移除复杂逻辑
-        # =========================================================
-        # v4 实际上只用到了 Phase 3 逻辑，为了兼容性保留框架，但核心在下面
-
-        # =========================================================
-        # Phase 3: PKE 联合训练 (Joint Training)
-        # =========================================================
+        # v6: 始终处于 Phase 3 逻辑 (Joint Training)
         if phase == 3:
             loss_detector_num = len(learn_index[0])
             loss_descriptor_num = fix_img.shape[0]
 
-            # 准备 Grid Inverse (Fix -> Mov 映射)
+            # 准备 Grid Inverse (Fix -> Mov 映射)用于 PKE 的几何一致性检查
             if H_0to1 is not None:
                 if H_0to1.dim() == 2: H_0to1 = H_0to1.unsqueeze(0)
                 grid_list = []
@@ -506,53 +499,46 @@ class SuperRetinaMultimodal(nn.Module):
 
             value_map_update = None
             
-            # --- 分支 A: 强监督 PKE (GT 注入) ---
-            if pke_supervised:
-                # 不做 PKE 挖掘，直接认为 labels 是完美的
-                # 1. Fix 分支检测监督
-                gt_heatmap = F.conv2d(label_point_positions, self.kernel, 
-                                    stride=1, padding=(self.kernel.shape[-1] - 1) // 2)
-                gt_heatmap[gt_heatmap > 1] = 1.0
-                loss_det_fix = self.dice(detector_pred_fix, gt_heatmap)
-                
-                # 2. Mov 分支检测监督 (将 GT Heatmap Warp 到 Mov 空间)
-                # 使用 grid_inverse (Fix -> Mov) 对 gt_heatmap 进行采样
-                gt_heatmap_mov = F.grid_sample(gt_heatmap, grid_inverse, align_corners=True)
-                # 二值化后再平滑，或者直接 Warp 平滑后的 Heatmap (这里直接 Warp 平滑后的)
-                loss_det_mov = self.dice(detector_pred_mov, gt_heatmap_mov)
-                
-                loss_detector = loss_det_fix + loss_det_mov
-                
-                # 3. 强制把 Value Map 设为高置信度 (因为是 GT)
-                value_map_update = torch.ones_like(value_map[learn_index]) * 0.95
-                
-                # 为了日志显示，伪造 PKE 输出
-                enhanced_label = label_point_positions
-                enhanced_label_pts = torch.nonzero(label_point_positions)
-                
-            # --- 分支 B: 标准 PKE (自监督挖掘) ---
-            else:
-                if len(learn_index[0]) != 0:
-                    loss_detector, number_pts, value_map_update, enhanced_label_pts, enhanced_label = \
-                        pke_learn(detector_pred_fix[learn_index], descriptor_pred_fix[learn_index],
-                                  grid_inverse[learn_index], detector_pred_mov[learn_index],
-                                  descriptor_pred_mov[learn_index], self.kernel, self.dice,
-                                  label_point_positions[learn_index], value_map[learn_index],
-                                  self.config, PKE_learn=True, vessel_mask=vessel_mask[learn_index] if vessel_mask is not None else None)
+            # --- PKE 核心过程 ---
+            # v6: PKE 始终开启，利用 GT (label_point_positions) 作为高质量种子进行挖掘
+            if len(learn_index[0]) != 0:
+                loss_detector, number_pts, value_map_update, enhanced_label_pts, enhanced_label = \
+                    pke_learn(detector_pred_fix[learn_index], descriptor_pred_fix[learn_index],
+                              grid_inverse[learn_index], detector_pred_mov[learn_index],
+                              descriptor_pred_mov[learn_index], self.kernel, self.dice,
+                              label_point_positions[learn_index], value_map[learn_index],
+                              self.config, PKE_learn=True, vessel_mask=vessel_mask[learn_index] if vessel_mask is not None else None)
             
             # 更新 Value Map
             if value_map is not None and value_map_update is not None:
-                # 简单修复: 强制转换类型
                 value_map[learn_index] = value_map_update.to(value_map.dtype)
 
-            # 联合期描述子 Loss (始终使用 GT 辅助采样)
+            # --- v6 Constraint A: GT Anchor Alignment (强监督锚点对齐) ---
+            # 无论 PKE 挖掘了什么，我们始终计算 GT 点位置的描述子 Loss
+            # 这强迫 Fix/Mov 双路编码器在解剖结构上对齐
             loss_descriptor, _ = self.descriptor_loss_warmup(
                 label_point_positions, descriptor_pred_fix, descriptor_pred_mov, H_0to1
             )
-            
-            # v5: Vessel-Guided Loss Weighting
-            # 强化血管区域特征的学习权重 (从 10.0 -> 1.0 衰减)
-            loss_descriptor = loss_descriptor * vessel_weight
+            # 给予极高权重，使其成为“定海神针”
+            loss_descriptor = loss_descriptor * 10.0
+
+            # --- v6 Constraint B: Mask-Constrained Detector (背景抑制) ---
+            # 任何落在 Mask 外的高响应都是错误的
+            loss_suppress = torch.tensor(0., device=fix_img.device)
+            if vessel_mask is not None:
+                # 生成背景 Mask (Mask 为 0 的地方是背景，值设为 1)
+                bg_mask = 1.0 - vessel_mask
+                
+                # 计算背景区域的 Heatmap 均值 (希望它趋近 0)
+                # 对 Fix 和 Mov 分支都进行约束
+                suppress_fix = (detector_pred_fix * bg_mask).mean()
+                suppress_mov = (detector_pred_mov * F.grid_sample(bg_mask, grid_inverse, align_corners=True)).mean() 
+                # 注意: Mov分支的Mask需要Warp过去，或者简单地只约束Fix分支。
+                # 为了稳妥，只约束 Fix 分支，因为 Fix Mask 是准确的 GT
+                
+                loss_suppress = suppress_fix * 5.0 # 权重 5.0
+                
+            loss_detector = loss_detector + loss_suppress
             
             return loss_detector + loss_descriptor, 0, loss_detector.detach().sum(), \
                    loss_descriptor.detach().sum(), enhanced_label_pts, \
