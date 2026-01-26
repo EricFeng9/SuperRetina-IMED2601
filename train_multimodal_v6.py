@@ -487,7 +487,7 @@ def train_multimodal():
                 )
             # ===== 关键修改：从完整血管分割图中提取稀疏的分叉点 =====
             # 这些分叉点将作为训练时的监督信号，引导模型学习独特的关键点
-            vessel_mask_full = data['vessel_mask0']  # [B, 1, H, W]
+            vessel_mask_full = data['vessel_mask0'].to(device)  # [B, 1, H, W]
             vessel_keypoints_batch = []
             
             for b in range(vessel_mask_full.shape[0]):
