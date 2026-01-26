@@ -536,7 +536,7 @@ class SuperRetinaMultimodal(nn.Module):
                 # 注意: Mov分支的Mask需要Warp过去，或者简单地只约束Fix分支。
                 # 为了稳妥，只约束 Fix 分支，因为 Fix Mask 是准确的 GT
                 
-                loss_suppress = suppress_fix * 5.0 # 权重 5.0
+                loss_suppress = suppress_fix * 0.1 # 权重 0.1
                 
             loss_detector = loss_detector + loss_suppress
             
