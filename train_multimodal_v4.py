@@ -403,16 +403,16 @@ def train_multimodal():
 
     pke_start_epoch = train_config.get('pke_start_epoch', 40) # 默认40以后开启PKE
     
-    # 训练循环
-    for epoch in range(1, num_epochs + 1):
-        if epoch <= 5:
-            phase = 1 # Warmup
-            model.PKE_learn = False
-            phase_name = "Phase 1: Warmup (Desc Alignment)"
-        else:
-            phase = 3 # Joint PKE (Standard Training)
+        if epoch <= 20:
+            phase = 3 # Enable PKE logic
+            pke_supervised = True
             model.PKE_learn = True
-            phase_name = "Phase 2: Joint PKE"
+            phase_name = "Phase 1: Supervised PKE (GT Injection)"
+        else:
+            phase = 3 # Joint PKE
+            pke_supervised = False
+            model.PKE_learn = True
+            phase_name = "Phase 2: Standard PKE (Self-Supervised)"
             
         log_print(f'Epoch {epoch}/{num_epochs} | {phase_name}')
         model.train()
@@ -485,7 +485,8 @@ def train_multimodal():
                 # 同时传入完整血管掩码 vessel_mask_full 用于 PKE 候选点过滤
                 loss, number_pts, loss_det_item, loss_desc_item, enhanced_kp, enhanced_label, det_pred, n_det, n_desc = \
                     model(img0, img1, vessel_keypoints, value_maps, learn_index,
-                          phase=phase, vessel_mask=vessel_mask_full, H_0to1=H_0to1)
+                          phase=phase, vessel_mask=vessel_mask_full, H_0to1=H_0to1,
+                          pke_supervised=pke_supervised)
                     
                 loss.backward()
                 optimizer.step()
