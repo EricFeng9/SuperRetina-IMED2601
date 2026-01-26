@@ -58,6 +58,7 @@ def calculate_vessel_weight(epoch):
         return 5.0 # High Weight to suppress background noise during PKE
 
 
+def compute_corner_error(H_est, H_gt, height, width):
     """计算角点平均误差 (MACE)"""
     corners = np.array([[0, 0], [width, 0], [width, height], [0, height]], dtype=np.float32)
     corners_homo = np.concatenate([corners, np.ones((4, 1), dtype=np.float32)], axis=1)
@@ -76,6 +77,9 @@ def calculate_vessel_weight(epoch):
     except:
         mace = float('inf')
     return mace
+
+
+
 
 def compute_checkerboard(img1, img2, n_grid=4):
     """计算棋盘格可视化"""
