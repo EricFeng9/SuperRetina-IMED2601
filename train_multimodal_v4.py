@@ -156,8 +156,14 @@ def validate(model, val_dataset, device, epoch, save_dir, log_file, train_config
             img0_tensor = transform(img_fix_gray).unsqueeze(0).to(device)
             img1_tensor = transform(img_mov_gray).unsqueeze(0).to(device)
             
+            # v4.1: Validation 阶段也必须反色 CF
+            if mode in ['cffa', 'cfoct', 'cfocta']:
+                 img0_input = 1.0 - img0_tensor
+            else:
+                 img0_input = img0_tensor
+            
             # 提取跨模态特征
-            det_fix, desc_fix = model.network(img0_tensor, mode='fix')
+            det_fix, desc_fix = model.network(img0_input, mode='fix')
             det_mov, desc_mov = model.network(img1_tensor, mode='mov')
             
             # 有效区域屏蔽,防止边缘伪影干扰关键点提取
@@ -352,8 +358,8 @@ def train_multimodal():
     if args.content_thresh is not None:
         config['PKE']['content_thresh'] = args.content_thresh
         
-    # v4 Force Dual-Path Encoder
-    config['MODEL']['shared_encoder'] = False
+    # v4.1: Return to Shared Encoder + Inversion
+    config['MODEL']['shared_encoder'] = True
         
     train_config = {**config['MODEL'], **config['PKE'], **config['DATASET'], **config['VALUE_MAP']}
     
@@ -470,10 +476,20 @@ def train_multimodal():
             img0 = apply_domain_randomization(img0_orig)
             img1 = apply_domain_randomization(img1_orig)
             
+            # v4.1: 手动反色 (CF -> Inverted CF) 以对齐血管亮度
+            # CF (Fix) 通常血管为暗，FA/OCTA (Mov) 血管为亮
+            # 反色后 CF 血管变亮，与 Mov 模态一致，利于 Shared Encoder 提取特征
+            if reg_type in ['cffa', 'cfoct', 'cfocta']:
+                 # 注意: 这里的 img0 已经是 tensor [B, 1, H, W], 且归一化过(假设0-1)
+                 # apply_domain_randomization 返回的是 tensor
+                 img0_input = 1.0 - img0
+            else:
+                 img0_input = img0
+            
             # ===== 可视化: 保存第一个 epoch 的前两个 batch =====
             if epoch == 1 and step_idx < 2:
                 save_batch_visualization(
-                    img0_orig, img1_orig, img0, img1,
+                    img0_orig, img1_orig, img0_input, img1,
                     save_root, epoch, step_idx + 1, batch_size,
                     vessel_mask=data['vessel_mask0'].to(device)
                 )
@@ -524,7 +540,7 @@ def train_multimodal():
                 # 调用模型 forward 方法，传入关键点掩码（而不是完整血管掩码）作为初始标签
                 # 同时传入完整血管掩码 vessel_mask_full 用于 PKE 候选点过滤
                 loss, number_pts, loss_det_item, loss_desc_item, enhanced_kp, enhanced_label, det_pred, n_det, n_desc = \
-                    model(img0, img1, vessel_keypoints, value_maps, learn_index,
+                    model(img0_input, img1, vessel_keypoints, value_maps, learn_index,
                           phase=phase, vessel_mask=vessel_mask_full, H_0to1=H_0to1,
                           pke_supervised=pke_supervised)
                     
