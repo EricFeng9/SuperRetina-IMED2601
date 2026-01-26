@@ -541,7 +541,8 @@ class SuperRetinaMultimodal(nn.Module):
             
             # 更新 Value Map
             if value_map is not None and value_map_update is not None:
-                value_map[learn_index] = value_map_update
+                # 简单修复: 强制转换类型
+                value_map[learn_index] = value_map_update.to(value_map.dtype)
 
             # 联合期描述子 Loss (始终使用 GT 辅助采样，哪怕是自监督阶段，利用 GT H 采样 Triplet 也是最稳的)
             loss_descriptor, _ = self.descriptor_loss_warmup(
