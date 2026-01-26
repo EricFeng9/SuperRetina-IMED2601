@@ -1,0 +1,840 @@
+
+--- Validation Epoch 0 ---
+ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9807 | MIR: 0.0066 | MeanErr: 256.45 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9678 | MIR: 0.0060 | MeanErr: 402.86 px
+ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.2662 | MIR: 0.0049 | MeanErr: 325.25 px
+ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8703 | MIR: 0.0076 | MeanErr: 205.78 px
+ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1510 | MIR: 0.0070 | MeanErr: 189.53 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1577 | MIR: 0.0066 | MeanErr: 467.63 px
+ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.2034 | MIR: 0.0059 | MeanErr: 253.34 px
+ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.4196 | MIR: 0.0056 | MeanErr: 480.36 px
+ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9906 | MIR: 0.0053 | MeanErr: 552.48 px
+ID: 051_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.6423 | MIR: 0.0059 | MeanErr: 261.78 px
+ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.4337 | MIR: 0.0091 | MeanErr: 395.19 px
+ID: 010_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.7226 | MIR: 0.0062 | MeanErr: 267.49 px
+ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1591 | MIR: 0.0055 | MeanErr: 556.95 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.4104 | MIR: 0.0052 | MeanErr: 538.11 px
+ID: 025_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9625 | MIR: 0.0052 | MeanErr: 153.33 px
+ID: 026_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.4812 | MIR: 0.0058 | MeanErr: 261.70 px
+ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.3769 | MIR: 0.0077 | MeanErr: 395.75 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.4081 | MIR: 0.0064 | MeanErr: 167.14 px
+ID: 012_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1607 | MIR: 0.0076 | MeanErr: 432.73 px
+ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.2388 | MIR: 0.0055 | MeanErr: 279.29 px
+
+--- Validation Summary ---
+Overall SR_ME (Success Rate @5px):  0.00%
+Overall SR_MAE (Success Rate @10px): 0.00%
+Average Repeatability:              50.02%
+Average Matching Inliers Ratio:     0.63%
+Mean Registration Error:            342.16 px
+Max Registration Error (Average):   664.47 px
+
+--- Validation Epoch 5 ---
+ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1953 | MIR: 0.0860 | MeanErr: 201.73 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9693 | MIR: 0.2569 | MeanErr: 276.68 px
+ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9800 | MIR: 0.1140 | MeanErr: 236.06 px
+ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9864 | MIR: 0.1047 | MeanErr: 335.26 px
+ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8416 | MIR: 0.0732 | MeanErr: 136.68 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9503 | MIR: 0.1172 | MeanErr: 386.10 px
+ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.5494 | MIR: 0.2342 | MeanErr: 339.33 px
+ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8780 | MIR: 0.1311 | MeanErr: 345.72 px
+ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9949 | MIR: 0.1888 | MeanErr: 370.36 px
+ID: 051_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9773 | MIR: 0.2079 | MeanErr: 319.41 px
+ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8143 | MIR: 0.0952 | MeanErr: 247.30 px
+ID: 010_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9322 | MIR: 0.1045 | MeanErr: 285.73 px
+ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.6049 | MIR: 0.2188 | MeanErr: 407.81 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9877 | MIR: 0.2174 | MeanErr: 408.75 px
+ID: 025_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0890 | MIR: 0.2000 | MeanErr: 417.22 px
+ID: 026_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8442 | MIR: 0.1538 | MeanErr: 218.25 px
+ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9699 | MIR: 0.0593 | MeanErr: 236.88 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9061 | MIR: 0.0775 | MeanErr: 331.02 px
+ID: 012_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8694 | MIR: 0.1091 | MeanErr: 420.85 px
+ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1475 | MIR: 0.1064 | MeanErr: 324.41 px
+
+--- Validation Summary ---
+Overall SR_ME (Success Rate @5px):  0.00%
+Overall SR_MAE (Success Rate @10px): 0.00%
+Average Repeatability:              77.44%
+Average Matching Inliers Ratio:     14.28%
+Mean Registration Error:            312.28 px
+Max Registration Error (Average):   493.51 px
+
+--- Validation Epoch 10 ---
+ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.7810 | MIR: 0.0571 | MeanErr: 351.83 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9802 | MIR: 0.1282 | MeanErr: 319.97 px
+ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1256 | MIR: 0.0783 | MeanErr: 325.41 px
+ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9735 | MIR: 0.0629 | MeanErr: 551.01 px
+ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9856 | MIR: 0.1066 | MeanErr: 134.04 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.6279 | MIR: 0.0576 | MeanErr: 445.16 px
+ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.5023 | MIR: 0.1167 | MeanErr: 489.18 px
+ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9605 | MIR: 0.1171 | MeanErr: 378.36 px
+ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9659 | MIR: 0.0894 | MeanErr: 505.03 px
+ID: 051_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0821 | MIR: 0.0504 | MeanErr: 46.53 px
+ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1359 | MIR: 0.0559 | MeanErr: 334.25 px
+ID: 010_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9606 | MIR: 0.0620 | MeanErr: 353.58 px
+ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.5357 | MIR: 0.0629 | MeanErr: 296.92 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9752 | MIR: 0.0976 | MeanErr: 409.77 px
+ID: 025_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8889 | MIR: 0.0769 | MeanErr: 524.35 px
+ID: 026_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1399 | MIR: 0.0940 | MeanErr: 457.02 px
+ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9712 | MIR: 0.0584 | MeanErr: 340.49 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.5070 | MIR: 0.0687 | MeanErr: 9541.74 px
+ID: 012_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9416 | MIR: 0.0523 | MeanErr: 344.61 px
+ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9704 | MIR: 0.0800 | MeanErr: 334.72 px
+
+--- Validation Summary ---
+Overall SR_ME (Success Rate @5px):  0.00%
+Overall SR_MAE (Success Rate @10px): 0.00%
+Average Repeatability:              70.05%
+Average Matching Inliers Ratio:     7.87%
+Mean Registration Error:            824.20 px
+Max Registration Error (Average):   5210.95 px
+
+--- Validation Epoch 15 ---
+ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0756 | MIR: 0.0816 | MeanErr: 790.02 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9709 | MIR: 0.1047 | MeanErr: 273.76 px
+ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.4788 | MIR: 0.1667 | MeanErr: 307.24 px
+ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.5537 | MIR: 0.0973 | MeanErr: 356.22 px
+ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9766 | MIR: 0.1034 | MeanErr: 164.78 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9649 | MIR: 0.1222 | MeanErr: 537.70 px
+ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.3098 | MIR: 0.1031 | MeanErr: 515.35 px
+ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9189 | MIR: 0.2472 | MeanErr: 465.77 px
+ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.3867 | MIR: 0.1000 | MeanErr: 373.64 px
+ID: 051_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9828 | MIR: 0.0901 | MeanErr: 341.37 px
+ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9880 | MIR: 0.0748 | MeanErr: 249.57 px
+ID: 010_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8647 | MIR: 0.0833 | MeanErr: 286.13 px
+ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.5723 | MIR: 0.0920 | MeanErr: 364.18 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9477 | MIR: 0.0891 | MeanErr: 346.58 px
+ID: 025_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.6170 | MIR: 0.1170 | MeanErr: 216.45 px
+ID: 026_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1350 | MIR: 0.0805 | MeanErr: 225.02 px
+ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9263 | MIR: 0.1058 | MeanErr: 348.03 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.6257 | MIR: 0.0796 | MeanErr: 423.72 px
+ID: 012_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.6847 | MIR: 0.0909 | MeanErr: 350.06 px
+ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8837 | MIR: 0.0761 | MeanErr: 375.81 px
+
+--- Validation Summary ---
+Overall SR_ME (Success Rate @5px):  0.00%
+Overall SR_MAE (Success Rate @10px): 0.00%
+Average Repeatability:              69.32%
+Average Matching Inliers Ratio:     10.53%
+Mean Registration Error:            365.57 px
+Max Registration Error (Average):   718.70 px
+
+--- Validation Epoch 20 ---
+ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1796 | MIR: 0.0700 | MeanErr: 331.80 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9422 | MIR: 0.1059 | MeanErr: 437.53 px
+ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.5118 | MIR: 0.0808 | MeanErr: 234.81 px
+ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8989 | MIR: 0.0808 | MeanErr: 413.08 px
+ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9461 | MIR: 0.1778 | MeanErr: 174.54 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9711 | MIR: 0.1584 | MeanErr: 537.84 px
+ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8045 | MIR: 0.1098 | MeanErr: 350.44 px
+ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9110 | MIR: 0.2500 | MeanErr: 466.76 px
+ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8580 | MIR: 0.1047 | MeanErr: 492.96 px
+ID: 051_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9222 | MIR: 0.0650 | MeanErr: 272.71 px
+ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8663 | MIR: 0.0721 | MeanErr: 243.77 px
+ID: 010_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0674 | MIR: 0.0609 | MeanErr: 213.81 px
+ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.3977 | MIR: 0.0805 | MeanErr: 283.35 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8960 | MIR: 0.1013 | MeanErr: 398.23 px
+ID: 025_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8839 | MIR: 0.1010 | MeanErr: 528.58 px
+ID: 026_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.7410 | MIR: 0.0870 | MeanErr: 185.59 px
+ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.7853 | MIR: 0.1753 | MeanErr: 325.30 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9827 | MIR: 0.1087 | MeanErr: 593.66 px
+ID: 012_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.4343 | MIR: 0.0702 | MeanErr: 356.59 px
+ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.7193 | MIR: 0.0745 | MeanErr: 252.05 px
+
+--- Validation Summary ---
+Overall SR_ME (Success Rate @5px):  0.00%
+Overall SR_MAE (Success Rate @10px): 0.00%
+Average Repeatability:              73.59%
+Average Matching Inliers Ratio:     10.67%
+Mean Registration Error:            354.67 px
+Max Registration Error (Average):   557.65 px
+
+--- Validation Epoch 25 ---
+ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9384 | MIR: 0.0698 | MeanErr: 171.54 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9124 | MIR: 0.1321 | MeanErr: 391.76 px
+ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8803 | MIR: 0.1096 | MeanErr: 231.29 px
+ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.7852 | MIR: 0.0909 | MeanErr: 163.84 px
+ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9424 | MIR: 0.2222 | MeanErr: 168.67 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9338 | MIR: 0.1111 | MeanErr: 485.48 px
+ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9122 | MIR: 0.0959 | MeanErr: 371.81 px
+ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9412 | MIR: 0.1644 | MeanErr: 402.47 px
+ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9357 | MIR: 0.1045 | MeanErr: 506.78 px
+ID: 051_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1071 | MIR: 0.1222 | MeanErr: 11.68 px
+ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.4043 | MIR: 0.0854 | MeanErr: 336.00 px
+ID: 010_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8067 | MIR: 0.0761 | MeanErr: 470.30 px
+ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.3546 | MIR: 0.0706 | MeanErr: 368.44 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8832 | MIR: 0.0897 | MeanErr: 405.99 px
+ID: 025_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.2692 | MIR: 0.1310 | MeanErr: 176.66 px
+ID: 026_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1319 | MIR: 0.0889 | MeanErr: 447.39 px
+ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9720 | MIR: 0.1098 | MeanErr: 343.39 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.2868 | MIR: 0.1039 | MeanErr: 210.27 px
+ID: 012_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9645 | MIR: 0.0745 | MeanErr: 391.94 px
+ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1361 | MIR: 0.0811 | MeanErr: 214.03 px
+
+--- Validation Summary ---
+Overall SR_ME (Success Rate @5px):  0.00%
+Overall SR_MAE (Success Rate @10px): 0.00%
+Average Repeatability:              67.49%
+Average Matching Inliers Ratio:     10.67%
+Mean Registration Error:            313.49 px
+Max Registration Error (Average):   508.60 px
+
+--- Validation Epoch 30 ---
+ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9728 | MIR: 0.0921 | MeanErr: 171.32 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9021 | MIR: 0.1667 | MeanErr: 328.17 px
+ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9864 | MIR: 0.1370 | MeanErr: 295.35 px
+ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8671 | MIR: 0.0921 | MeanErr: 479.01 px
+ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.7734 | MIR: 0.1324 | MeanErr: 165.06 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.4963 | MIR: 0.0933 | MeanErr: 494.44 px
+ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.3448 | MIR: 0.1373 | MeanErr: 366.73 px
+ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9771 | MIR: 0.1579 | MeanErr: 150.36 px
+ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1325 | MIR: 0.0811 | MeanErr: 582.70 px
+ID: 051_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.1773 | MIR: 0.1368 | MeanErr: 4.45 px
+ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1712 | MIR: 0.0864 | MeanErr: 393.53 px
+ID: 010_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9742 | MIR: 0.1000 | MeanErr: 476.37 px
+ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1233 | MIR: 0.1194 | MeanErr: 13.80 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9860 | MIR: 0.0946 | MeanErr: 319.72 px
+ID: 025_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.2109 | MIR: 0.0959 | MeanErr: 226.12 px
+ID: 026_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9726 | MIR: 0.0833 | MeanErr: 255.35 px
+ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.5137 | MIR: 0.1023 | MeanErr: 364.47 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.4000 | MIR: 0.0952 | MeanErr: 533.09 px
+ID: 012_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.1394 | MIR: 0.1132 | MeanErr: 3.36 px
+ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9800 | MIR: 0.1379 | MeanErr: 206.92 px
+
+--- Validation Summary ---
+Overall SR_ME (Success Rate @5px):  10.00%
+Overall SR_MAE (Success Rate @10px): 10.00%
+Average Repeatability:              60.51%
+Average Matching Inliers Ratio:     11.27%
+Mean Registration Error:            291.52 px
+Max Registration Error (Average):   476.74 px
+
+--- Validation Epoch 35 ---
+ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.7898 | MIR: 0.0870 | MeanErr: 298.92 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9724 | MIR: 0.1385 | MeanErr: 376.68 px
+ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9620 | MIR: 0.0864 | MeanErr: 300.18 px
+ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9697 | MIR: 0.1124 | MeanErr: 165.34 px
+ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9781 | MIR: 0.1486 | MeanErr: 150.27 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8562 | MIR: 0.1071 | MeanErr: 439.91 px
+ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9805 | MIR: 0.1757 | MeanErr: 612.45 px
+ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0301 | MIR: 0.1311 | MeanErr: 475.36 px
+ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8954 | MIR: 0.0959 | MeanErr: 379.81 px
+ID: 051_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1458 | MIR: 0.1685 | MeanErr: 5.92 px
+ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1295 | MIR: 0.1190 | MeanErr: 5.43 px
+ID: 010_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9745 | MIR: 0.0860 | MeanErr: 336.34 px
+ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0828 | MIR: 0.0825 | MeanErr: 24.99 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1517 | MIR: 0.1818 | MeanErr: 519.49 px
+ID: 025_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1631 | MIR: 0.0920 | MeanErr: 326.14 px
+ID: 026_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0608 | MIR: 0.0842 | MeanErr: 16.71 px
+ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9434 | MIR: 0.1268 | MeanErr: 295.34 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9863 | MIR: 0.1139 | MeanErr: 207.84 px
+ID: 012_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.1445 | MIR: 0.1226 | MeanErr: 4.03 px
+ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.2973 | MIR: 0.1013 | MeanErr: 242.60 px
+
+--- Validation Summary ---
+Overall SR_ME (Success Rate @5px):  5.00%
+Overall SR_MAE (Success Rate @10px): 5.00%
+Average Repeatability:              57.57%
+Average Matching Inliers Ratio:     11.81%
+Mean Registration Error:            259.19 px
+Max Registration Error (Average):   402.51 px
+
+--- Validation Epoch 40 ---
+ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.6164 | MIR: 0.0870 | MeanErr: 299.18 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.6687 | MIR: 0.1266 | MeanErr: 334.06 px
+ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9941 | MIR: 0.0920 | MeanErr: 301.60 px
+ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.3274 | MIR: 0.0816 | MeanErr: 165.86 px
+ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.6689 | MIR: 0.0986 | MeanErr: 142.55 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.7843 | MIR: 0.0968 | MeanErr: 497.18 px
+ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.4294 | MIR: 0.1067 | MeanErr: 615.72 px
+ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0764 | MIR: 0.0875 | MeanErr: 209.19 px
+ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9586 | MIR: 0.0886 | MeanErr: 381.44 px
+ID: 051_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1032 | MIR: 0.0857 | MeanErr: 11.66 px
+ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1250 | MIR: 0.1263 | MeanErr: 8.08 px
+ID: 010_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0647 | MIR: 0.0729 | MeanErr: 95.70 px
+ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1173 | MIR: 0.1034 | MeanErr: 5.20 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9812 | MIR: 0.1013 | MeanErr: 300.30 px
+ID: 025_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.7626 | MIR: 0.0778 | MeanErr: 461.66 px
+ID: 026_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9815 | MIR: 0.0971 | MeanErr: 263.69 px
+ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9586 | MIR: 0.0920 | MeanErr: 352.07 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.6013 | MIR: 0.1250 | MeanErr: 449.20 px
+ID: 012_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9594 | MIR: 0.0640 | MeanErr: 312.91 px
+ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9333 | MIR: 0.1154 | MeanErr: 289.18 px
+
+--- Validation Summary ---
+Overall SR_ME (Success Rate @5px):  0.00%
+Overall SR_MAE (Success Rate @10px): 0.00%
+Average Repeatability:              60.56%
+Average Matching Inliers Ratio:     9.63%
+Mean Registration Error:            274.82 px
+Max Registration Error (Average):   439.53 px
+
+--- Validation Epoch 45 ---
+ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.5867 | MIR: 0.1047 | MeanErr: 155.35 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9747 | MIR: 0.1127 | MeanErr: 381.31 px
+ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1006 | MIR: 0.0988 | MeanErr: 6.99 px
+ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.7886 | MIR: 0.0860 | MeanErr: 254.55 px
+ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9371 | MIR: 0.1250 | MeanErr: 177.42 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0968 | MIR: 0.0641 | MeanErr: 439.20 px
+ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8249 | MIR: 0.0706 | MeanErr: 349.06 px
+ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1270 | MIR: 0.1111 | MeanErr: 444.29 px
+ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9398 | MIR: 0.1216 | MeanErr: 586.60 px
+ID: 051_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.1533 | MIR: 0.1771 | MeanErr: 3.78 px
+ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0701 | MIR: 0.0833 | MeanErr: 11.78 px
+ID: 010_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.2515 | MIR: 0.0851 | MeanErr: 435.65 px
+ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0988 | MIR: 0.0889 | MeanErr: 17.73 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.6519 | MIR: 0.0811 | MeanErr: 370.87 px
+ID: 025_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1824 | MIR: 0.0741 | MeanErr: 251.41 px
+ID: 026_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9487 | MIR: 0.0962 | MeanErr: 259.57 px
+ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0736 | MIR: 0.0723 | MeanErr: 66.30 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.5548 | MIR: 0.1067 | MeanErr: 514.68 px
+ID: 012_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.1106 | MIR: 0.1345 | MeanErr: 3.05 px
+ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.7947 | MIR: 0.0986 | MeanErr: 438.11 px
+
+--- Validation Summary ---
+Overall SR_ME (Success Rate @5px):  10.00%
+Overall SR_MAE (Success Rate @10px): 10.00%
+Average Repeatability:              46.33%
+Average Matching Inliers Ratio:     9.96%
+Mean Registration Error:            258.38 px
+Max Registration Error (Average):   512.03 px
+
+--- Validation Epoch 50 ---
+ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9699 | MIR: 0.0972 | MeanErr: 299.64 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9242 | MIR: 0.1406 | MeanErr: 382.18 px
+ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0985 | MIR: 0.1379 | MeanErr: 8.56 px
+ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.7829 | MIR: 0.1154 | MeanErr: 163.02 px
+ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9724 | MIR: 0.1507 | MeanErr: 179.41 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8062 | MIR: 0.0864 | MeanErr: 497.48 px
+ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.2200 | MIR: 0.0909 | MeanErr: 430.61 px
+ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0885 | MIR: 0.1321 | MeanErr: 470.04 px
+ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.7800 | MIR: 0.0984 | MeanErr: 422.85 px
+ID: 051_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.1912 | MIR: 0.2000 | MeanErr: 3.44 px
+ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1022 | MIR: 0.1071 | MeanErr: 9.31 px
+ID: 010_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0690 | MIR: 0.0833 | MeanErr: 59.04 px
+ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1357 | MIR: 0.1200 | MeanErr: 9.02 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0152 | MIR: 0.1296 | MeanErr: 1241.64 px
+ID: 025_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0833 | MIR: 0.1290 | MeanErr: 7.42 px
+ID: 026_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0992 | MIR: 0.1071 | MeanErr: 5.66 px
+ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9420 | MIR: 0.1127 | MeanErr: 401.51 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1550 | MIR: 0.1094 | MeanErr: 588.31 px
+ID: 012_01 | SR_ME: 0.0 | SR_MAE: 1.0 | Rep: 0.1374 | MIR: 0.1650 | MeanErr: 5.22 px
+ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9701 | MIR: 0.1296 | MeanErr: 153.45 px
+
+--- Validation Summary ---
+Overall SR_ME (Success Rate @5px):  5.00%
+Overall SR_MAE (Success Rate @10px): 10.00%
+Average Repeatability:              42.72%
+Average Matching Inliers Ratio:     12.21%
+Mean Registration Error:            266.89 px
+Max Registration Error (Average):   619.26 px
+
+--- Validation Epoch 55 ---
+ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9536 | MIR: 0.0952 | MeanErr: 154.76 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.5245 | MIR: 0.1379 | MeanErr: 333.53 px
+ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.4000 | MIR: 0.1299 | MeanErr: 616.13 px
+ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.4880 | MIR: 0.0909 | MeanErr: 417.59 px
+ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8012 | MIR: 0.1000 | MeanErr: 177.49 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1226 | MIR: 0.0723 | MeanErr: 321.92 px
+ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9306 | MIR: 0.1096 | MeanErr: 395.74 px
+ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9583 | MIR: 0.1207 | MeanErr: 162.04 px
+ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.2739 | MIR: 0.0923 | MeanErr: 390.34 px
+ID: 051_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.2568 | MIR: 0.2326 | MeanErr: 3.22 px
+ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1172 | MIR: 0.0864 | MeanErr: 22.03 px
+ID: 010_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.1183 | MIR: 0.1250 | MeanErr: 4.00 px
+ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1030 | MIR: 0.1039 | MeanErr: 185.87 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0490 | MIR: 0.0943 | MeanErr: 242.35 px
+ID: 025_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1079 | MIR: 0.1370 | MeanErr: 6.42 px
+ID: 026_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.1067 | MIR: 0.1222 | MeanErr: 4.23 px
+ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1195 | MIR: 0.0920 | MeanErr: 6.00 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.5871 | MIR: 0.0959 | MeanErr: 321.85 px
+ID: 012_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1085 | MIR: 0.1293 | MeanErr: 7.54 px
+ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8333 | MIR: 0.1111 | MeanErr: 154.73 px
+
+--- Validation Summary ---
+Overall SR_ME (Success Rate @5px):  15.00%
+Overall SR_MAE (Success Rate @10px): 15.00%
+Average Repeatability:              39.80%
+Average Matching Inliers Ratio:     11.39%
+Mean Registration Error:            196.39 px
+Max Registration Error (Average):   439.72 px
+
+--- Validation Epoch 60 ---
+ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.4846 | MIR: 0.1132 | MeanErr: 309.43 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1061 | MIR: 0.1154 | MeanErr: 147.45 px
+ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8125 | MIR: 0.1127 | MeanErr: 350.51 px
+ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0903 | MIR: 0.0845 | MeanErr: 328.21 px
+ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8976 | MIR: 0.1446 | MeanErr: 177.43 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9635 | MIR: 0.0870 | MeanErr: 356.55 px
+ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8654 | MIR: 0.1228 | MeanErr: 319.83 px
+ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0804 | MIR: 0.1333 | MeanErr: 190.97 px
+ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.5608 | MIR: 0.0845 | MeanErr: 425.31 px
+ID: 051_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.2231 | MIR: 0.2024 | MeanErr: 3.61 px
+ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0556 | MIR: 0.1013 | MeanErr: 32.88 px
+ID: 010_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1081 | MIR: 0.0833 | MeanErr: 8.32 px
+ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0993 | MIR: 0.0920 | MeanErr: 38.46 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1742 | MIR: 0.1176 | MeanErr: 301.22 px
+ID: 025_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0885 | MIR: 0.1143 | MeanErr: 6.04 px
+ID: 026_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1387 | MIR: 0.1781 | MeanErr: 8.52 px
+ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1216 | MIR: 0.1231 | MeanErr: 8.05 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.7518 | MIR: 0.1286 | MeanErr: 518.87 px
+ID: 012_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1295 | MIR: 0.1333 | MeanErr: 8.76 px
+ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9786 | MIR: 0.1094 | MeanErr: 269.94 px
+
+--- Validation Summary ---
+Overall SR_ME (Success Rate @5px):  5.00%
+Overall SR_MAE (Success Rate @10px): 5.00%
+Average Repeatability:              38.65%
+Average Matching Inliers Ratio:     11.91%
+Mean Registration Error:            190.52 px
+Max Registration Error (Average):   332.30 px
+
+--- Validation Epoch 65 ---
+ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8681 | MIR: 0.0946 | MeanErr: 332.24 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1216 | MIR: 0.0962 | MeanErr: 312.01 px
+ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8065 | MIR: 0.1045 | MeanErr: 310.16 px
+ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1783 | MIR: 0.1148 | MeanErr: 555.49 px
+ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9497 | MIR: 0.1286 | MeanErr: 164.87 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.2288 | MIR: 0.1047 | MeanErr: 504.35 px
+ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.2350 | MIR: 0.0896 | MeanErr: 355.75 px
+ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1111 | MIR: 0.1429 | MeanErr: 271.96 px
+ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.7195 | MIR: 0.0933 | MeanErr: 558.40 px
+ID: 051_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.2378 | MIR: 0.2308 | MeanErr: 2.92 px
+ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0979 | MIR: 0.1279 | MeanErr: 10.45 px
+ID: 010_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1049 | MIR: 0.1149 | MeanErr: 18.32 px
+ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0621 | MIR: 0.0777 | MeanErr: 25.35 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9797 | MIR: 0.0986 | MeanErr: 354.54 px
+ID: 025_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1016 | MIR: 0.2000 | MeanErr: 8.50 px
+ID: 026_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1020 | MIR: 0.1222 | MeanErr: 12.27 px
+ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.7613 | MIR: 0.1045 | MeanErr: 397.99 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.3725 | MIR: 0.0946 | MeanErr: 603.91 px
+ID: 012_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.1953 | MIR: 0.1368 | MeanErr: 4.06 px
+ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9733 | MIR: 0.0909 | MeanErr: 386.75 px
+
+--- Validation Summary ---
+Overall SR_ME (Success Rate @5px):  10.00%
+Overall SR_MAE (Success Rate @10px): 10.00%
+Average Repeatability:              41.04%
+Average Matching Inliers Ratio:     11.84%
+Mean Registration Error:            259.51 px
+Max Registration Error (Average):   403.52 px
+
+--- Validation Epoch 70 ---
+ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0719 | MIR: 0.0923 | MeanErr: 101.67 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.5556 | MIR: 0.0857 | MeanErr: 385.41 px
+ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1176 | MIR: 0.1077 | MeanErr: 43.41 px
+ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9709 | MIR: 0.1200 | MeanErr: 159.27 px
+ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0809 | MIR: 0.0946 | MeanErr: 125.40 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.3152 | MIR: 0.0920 | MeanErr: 526.35 px
+ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1913 | MIR: 0.0882 | MeanErr: 598.90 px
+ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1069 | MIR: 0.1311 | MeanErr: 494.30 px
+ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9023 | MIR: 0.0769 | MeanErr: 409.38 px
+ID: 051_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.2062 | MIR: 0.2421 | MeanErr: 3.40 px
+ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0877 | MIR: 0.1111 | MeanErr: 28.97 px
+ID: 010_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0898 | MIR: 0.1042 | MeanErr: 36.21 px
+ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1292 | MIR: 0.1264 | MeanErr: 9.46 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0926 | MIR: 0.0822 | MeanErr: 84.54 px
+ID: 025_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0909 | MIR: 0.1562 | MeanErr: 8.30 px
+ID: 026_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1000 | MIR: 0.1236 | MeanErr: 9.79 px
+ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1636 | MIR: 0.0964 | MeanErr: 355.89 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.5758 | MIR: 0.1096 | MeanErr: 200.16 px
+ID: 012_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1055 | MIR: 0.0985 | MeanErr: 22.31 px
+ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.7012 | MIR: 0.1159 | MeanErr: 242.79 px
+
+--- Validation Summary ---
+Overall SR_ME (Success Rate @5px):  5.00%
+Overall SR_MAE (Success Rate @10px): 5.00%
+Average Repeatability:              28.28%
+Average Matching Inliers Ratio:     11.27%
+Mean Registration Error:            192.30 px
+Max Registration Error (Average):   444.31 px
+
+--- Validation Epoch 75 ---
+ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0816 | MIR: 0.0811 | MeanErr: 214.55 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1098 | MIR: 0.1270 | MeanErr: 8.25 px
+ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0933 | MIR: 0.1127 | MeanErr: 11.44 px
+ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0556 | MIR: 0.0946 | MeanErr: 203.22 px
+ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9828 | MIR: 0.0864 | MeanErr: 139.17 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1637 | MIR: 0.0759 | MeanErr: 742.89 px
+ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1092 | MIR: 0.0952 | MeanErr: 392.57 px
+ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.6016 | MIR: 0.1111 | MeanErr: 170.78 px
+ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.3824 | MIR: 0.0750 | MeanErr: 361.54 px
+ID: 051_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.1835 | MIR: 0.1915 | MeanErr: 2.55 px
+ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1000 | MIR: 0.1222 | MeanErr: 23.96 px
+ID: 010_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0920 | MIR: 0.0938 | MeanErr: 14.70 px
+ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1404 | MIR: 0.1364 | MeanErr: 22.72 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.7683 | MIR: 0.0800 | MeanErr: 369.64 px
+ID: 025_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1232 | MIR: 0.1875 | MeanErr: 5.94 px
+ID: 026_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1097 | MIR: 0.1529 | MeanErr: 17.76 px
+ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1118 | MIR: 0.1169 | MeanErr: 9.88 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9357 | MIR: 0.0886 | MeanErr: 189.67 px
+ID: 012_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.2000 | MIR: 0.1795 | MeanErr: 3.27 px
+ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8994 | MIR: 0.0845 | MeanErr: 951.29 px
+
+--- Validation Summary ---
+Overall SR_ME (Success Rate @5px):  10.00%
+Overall SR_MAE (Success Rate @10px): 10.00%
+Average Repeatability:              31.22%
+Average Matching Inliers Ratio:     11.46%
+Mean Registration Error:            192.79 px
+Max Registration Error (Average):   790.76 px
+
+--- Validation Epoch 80 ---
+ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0000 | MIR: 0.0845 | MeanErr: 331.01 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9725 | MIR: 0.1081 | MeanErr: 327.17 px
+ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1492 | MIR: 0.0843 | MeanErr: 307.00 px
+ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1134 | MIR: 0.1013 | MeanErr: 144.02 px
+ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9184 | MIR: 0.0957 | MeanErr: 355.55 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9778 | MIR: 0.0928 | MeanErr: 505.12 px
+ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8632 | MIR: 0.0897 | MeanErr: 594.81 px
+ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9226 | MIR: 0.1212 | MeanErr: 139.97 px
+ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8832 | MIR: 0.0714 | MeanErr: 496.94 px
+ID: 051_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.1913 | MIR: 0.2000 | MeanErr: 3.87 px
+ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0990 | MIR: 0.1359 | MeanErr: 23.92 px
+ID: 010_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1099 | MIR: 0.0865 | MeanErr: 15.39 px
+ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0990 | MIR: 0.1048 | MeanErr: 33.41 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1099 | MIR: 0.0833 | MeanErr: 234.56 px
+ID: 025_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1119 | MIR: 0.1250 | MeanErr: 7.50 px
+ID: 026_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0778 | MIR: 0.1250 | MeanErr: 12.58 px
+ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.2500 | MIR: 0.0833 | MeanErr: 350.78 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9667 | MIR: 0.0789 | MeanErr: 188.82 px
+ID: 012_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.1760 | MIR: 0.1314 | MeanErr: 3.92 px
+ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0642 | MIR: 0.0857 | MeanErr: 112.94 px
+
+--- Validation Summary ---
+Overall SR_ME (Success Rate @5px):  10.00%
+Overall SR_MAE (Success Rate @10px): 10.00%
+Average Repeatability:              40.28%
+Average Matching Inliers Ratio:     10.45%
+Mean Registration Error:            209.46 px
+Max Registration Error (Average):   341.22 px
+
+--- Validation Epoch 85 ---
+ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.6226 | MIR: 0.0921 | MeanErr: 189.95 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1215 | MIR: 0.1184 | MeanErr: 20.57 px
+ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1420 | MIR: 0.1039 | MeanErr: 7.85 px
+ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9794 | MIR: 0.1125 | MeanErr: 378.92 px
+ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.2240 | MIR: 0.0860 | MeanErr: 160.89 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1602 | MIR: 0.0833 | MeanErr: 585.34 px
+ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.2857 | MIR: 0.0759 | MeanErr: 327.11 px
+ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.2123 | MIR: 0.1186 | MeanErr: 515.14 px
+ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9839 | MIR: 0.1039 | MeanErr: 582.19 px
+ID: 051_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.1517 | MIR: 0.1803 | MeanErr: 4.10 px
+ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0860 | MIR: 0.1068 | MeanErr: 21.27 px
+ID: 010_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1413 | MIR: 0.1100 | MeanErr: 6.54 px
+ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1451 | MIR: 0.1296 | MeanErr: 6.53 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.4033 | MIR: 0.0854 | MeanErr: 397.17 px
+ID: 025_01 | SR_ME: 0.0 | SR_MAE: 1.0 | Rep: 0.0915 | MIR: 0.1351 | MeanErr: 5.81 px
+ID: 026_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.1280 | MIR: 0.1505 | MeanErr: 4.19 px
+ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1034 | MIR: 0.1324 | MeanErr: 74.30 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9006 | MIR: 0.0833 | MeanErr: 604.23 px
+ID: 012_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1328 | MIR: 0.1194 | MeanErr: 7.31 px
+ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9613 | MIR: 0.1316 | MeanErr: 338.05 px
+
+--- Validation Summary ---
+Overall SR_ME (Success Rate @5px):  10.00%
+Overall SR_MAE (Success Rate @10px): 15.00%
+Average Repeatability:              34.88%
+Average Matching Inliers Ratio:     11.30%
+Mean Registration Error:            211.87 px
+Max Registration Error (Average):   326.46 px
+
+--- Validation Epoch 90 ---
+ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9795 | MIR: 0.1111 | MeanErr: 355.00 px
+ID: 024_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.1341 | MIR: 0.1408 | MeanErr: 4.27 px
+ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0994 | MIR: 0.1176 | MeanErr: 14.63 px
+ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.4451 | MIR: 0.0946 | MeanErr: 368.80 px
+ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.4826 | MIR: 0.0811 | MeanErr: 296.98 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.4242 | MIR: 0.0959 | MeanErr: 520.90 px
+ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1383 | MIR: 0.1429 | MeanErr: 622.77 px
+ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0876 | MIR: 0.1017 | MeanErr: 200.42 px
+ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0783 | MIR: 0.0769 | MeanErr: 9.79 px
+ID: 051_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.1893 | MIR: 0.2358 | MeanErr: 2.91 px
+ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1420 | MIR: 0.0957 | MeanErr: 8.22 px
+ID: 010_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1345 | MIR: 0.1020 | MeanErr: 6.15 px
+ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1398 | MIR: 0.0982 | MeanErr: 9.70 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.2012 | MIR: 0.0833 | MeanErr: 421.13 px
+ID: 025_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0952 | MIR: 0.1125 | MeanErr: 7.01 px
+ID: 026_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1083 | MIR: 0.1429 | MeanErr: 14.86 px
+ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1170 | MIR: 0.1333 | MeanErr: 13.06 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.6424 | MIR: 0.0811 | MeanErr: 203.02 px
+ID: 012_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1603 | MIR: 0.1478 | MeanErr: 5.78 px
+ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8757 | MIR: 0.0896 | MeanErr: 339.64 px
+
+--- Validation Summary ---
+Overall SR_ME (Success Rate @5px):  10.00%
+Overall SR_MAE (Success Rate @10px): 10.00%
+Average Repeatability:              28.37%
+Average Matching Inliers Ratio:     11.42%
+Mean Registration Error:            171.25 px
+Max Registration Error (Average):   349.34 px
+
+--- Validation Epoch 95 ---
+ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8217 | MIR: 0.0886 | MeanErr: 380.71 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.2202 | MIR: 0.1719 | MeanErr: 8.86 px
+ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9341 | MIR: 0.0795 | MeanErr: 312.92 px
+ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.6809 | MIR: 0.0986 | MeanErr: 260.52 px
+ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9581 | MIR: 0.0745 | MeanErr: 195.42 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.2111 | MIR: 0.0732 | MeanErr: 463.79 px
+ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9246 | MIR: 0.1014 | MeanErr: 528.28 px
+ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.4648 | MIR: 0.0968 | MeanErr: 181.52 px
+ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0656 | MIR: 0.0750 | MeanErr: 80.30 px
+ID: 051_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.2429 | MIR: 0.2897 | MeanErr: 2.72 px
+ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1304 | MIR: 0.1263 | MeanErr: 9.15 px
+ID: 010_01 | SR_ME: 1.0 | SR_MAE: 0.0 | Rep: 0.1230 | MIR: 0.1053 | MeanErr: 4.26 px
+ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1768 | MIR: 0.1609 | MeanErr: 7.42 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9762 | MIR: 0.0909 | MeanErr: 533.47 px
+ID: 025_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0816 | MIR: 0.1169 | MeanErr: 11.65 px
+ID: 026_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1265 | MIR: 0.1977 | MeanErr: 6.26 px
+ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1437 | MIR: 0.1111 | MeanErr: 9.78 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9500 | MIR: 0.1014 | MeanErr: 261.03 px
+ID: 012_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.1992 | MIR: 0.1450 | MeanErr: 3.92 px
+ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9200 | MIR: 0.1077 | MeanErr: 239.36 px
+
+--- Validation Summary ---
+Overall SR_ME (Success Rate @5px):  15.00%
+Overall SR_MAE (Success Rate @10px): 10.00%
+Average Repeatability:              46.76%
+Average Matching Inliers Ratio:     12.06%
+Mean Registration Error:            175.07 px
+Max Registration Error (Average):   287.67 px
+
+--- Validation Epoch 100 ---
+ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.4573 | MIR: 0.0899 | MeanErr: 142.59 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9153 | MIR: 0.1169 | MeanErr: 268.02 px
+ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0893 | MIR: 0.0875 | MeanErr: 73.52 px
+ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8465 | MIR: 0.0822 | MeanErr: 555.19 px
+ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.2042 | MIR: 0.0909 | MeanErr: 442.64 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1771 | MIR: 0.0787 | MeanErr: 434.42 px
+ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0806 | MIR: 0.0759 | MeanErr: 1248.31 px
+ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8627 | MIR: 0.1026 | MeanErr: 130.07 px
+ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8325 | MIR: 0.0759 | MeanErr: 377.64 px
+ID: 051_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.2286 | MIR: 0.2328 | MeanErr: 3.42 px
+ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1270 | MIR: 0.1398 | MeanErr: 13.58 px
+ID: 010_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1094 | MIR: 0.1415 | MeanErr: 9.96 px
+ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1472 | MIR: 0.1489 | MeanErr: 5.04 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9548 | MIR: 0.0854 | MeanErr: 561.01 px
+ID: 025_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1197 | MIR: 0.1461 | MeanErr: 9.35 px
+ID: 026_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.1149 | MIR: 0.1837 | MeanErr: 3.81 px
+ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1397 | MIR: 0.0909 | MeanErr: 29.00 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1823 | MIR: 0.0750 | MeanErr: 109.15 px
+ID: 012_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1344 | MIR: 0.0986 | MeanErr: 8.13 px
+ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.4309 | MIR: 0.0732 | MeanErr: 391.96 px
+
+--- Validation Summary ---
+Overall SR_ME (Success Rate @5px):  10.00%
+Overall SR_MAE (Success Rate @10px): 10.00%
+Average Repeatability:              35.77%
+Average Matching Inliers Ratio:     11.08%
+Mean Registration Error:            240.84 px
+Max Registration Error (Average):   708.91 px
+
+--- Validation Epoch 105 ---
+ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0897 | MIR: 0.0886 | MeanErr: 370.46 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1618 | MIR: 0.1159 | MeanErr: 8.64 px
+ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1469 | MIR: 0.0899 | MeanErr: 14.05 px
+ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0973 | MIR: 0.0732 | MeanErr: 945.25 px
+ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.7680 | MIR: 0.0833 | MeanErr: 151.19 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.3372 | MIR: 0.0976 | MeanErr: 455.20 px
+ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0673 | MIR: 0.1000 | MeanErr: 698.73 px
+ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9589 | MIR: 0.1129 | MeanErr: 202.17 px
+ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.7016 | MIR: 0.0745 | MeanErr: 513.66 px
+ID: 051_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.2429 | MIR: 0.2719 | MeanErr: 3.47 px
+ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1520 | MIR: 0.1579 | MeanErr: 11.34 px
+ID: 010_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0895 | MIR: 0.0849 | MeanErr: 41.64 px
+ID: 018_01 | SR_ME: 0.0 | SR_MAE: 1.0 | Rep: 0.1531 | MIR: 0.1327 | MeanErr: 5.05 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.4220 | MIR: 0.0882 | MeanErr: 332.24 px
+ID: 025_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1141 | MIR: 0.1585 | MeanErr: 6.13 px
+ID: 026_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1084 | MIR: 0.1446 | MeanErr: 8.38 px
+ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1559 | MIR: 0.1087 | MeanErr: 9.12 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9535 | MIR: 0.1406 | MeanErr: 187.03 px
+ID: 012_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1423 | MIR: 0.1250 | MeanErr: 6.26 px
+ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.6203 | MIR: 0.1184 | MeanErr: 388.16 px
+
+--- Validation Summary ---
+Overall SR_ME (Success Rate @5px):  5.00%
+Overall SR_MAE (Success Rate @10px): 10.00%
+Average Repeatability:              32.41%
+Average Matching Inliers Ratio:     11.84%
+Mean Registration Error:            217.91 px
+Max Registration Error (Average):   548.64 px
+
+--- Validation Epoch 110 ---
+ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0932 | MIR: 0.0706 | MeanErr: 169.00 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1040 | MIR: 0.1029 | MeanErr: 34.03 px
+ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1053 | MIR: 0.1013 | MeanErr: 25.34 px
+ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9333 | MIR: 0.0864 | MeanErr: 154.98 px
+ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9779 | MIR: 0.1341 | MeanErr: 327.19 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.7293 | MIR: 0.1282 | MeanErr: 460.61 px
+ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1019 | MIR: 0.0972 | MeanErr: 287.49 px
+ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.5099 | MIR: 0.0988 | MeanErr: 171.88 px
+ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1270 | MIR: 0.0886 | MeanErr: 504.35 px
+ID: 051_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.2654 | MIR: 0.3113 | MeanErr: 2.76 px
+ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0741 | MIR: 0.0811 | MeanErr: 30.94 px
+ID: 010_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0968 | MIR: 0.1010 | MeanErr: 11.19 px
+ID: 018_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.1929 | MIR: 0.1429 | MeanErr: 4.36 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0347 | MIR: 0.0794 | MeanErr: 447.80 px
+ID: 025_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.1176 | MIR: 0.1461 | MeanErr: 4.93 px
+ID: 026_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.1716 | MIR: 0.1789 | MeanErr: 2.93 px
+ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1453 | MIR: 0.1026 | MeanErr: 15.49 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.3591 | MIR: 0.1067 | MeanErr: 111.10 px
+ID: 012_01 | SR_ME: 1.0 | SR_MAE: 0.0 | Rep: 0.1579 | MIR: 0.1250 | MeanErr: 4.63 px
+ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.5652 | MIR: 0.1471 | MeanErr: 347.35 px
+
+--- Validation Summary ---
+Overall SR_ME (Success Rate @5px):  25.00%
+Overall SR_MAE (Success Rate @10px): 20.00%
+Average Repeatability:              29.31%
+Average Matching Inliers Ratio:     12.15%
+Mean Registration Error:            155.92 px
+Max Registration Error (Average):   297.98 px
+
+--- Validation Epoch 115 ---
+ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.2022 | MIR: 0.0737 | MeanErr: 156.32 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.2743 | MIR: 0.0811 | MeanErr: 312.10 px
+ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0795 | MIR: 0.1053 | MeanErr: 51.13 px
+ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.5813 | MIR: 0.0808 | MeanErr: 496.44 px
+ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0860 | MIR: 0.1096 | MeanErr: 248.32 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.6685 | MIR: 0.0968 | MeanErr: 525.94 px
+ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1912 | MIR: 0.1014 | MeanErr: 311.40 px
+ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8790 | MIR: 0.0988 | MeanErr: 165.31 px
+ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0938 | MIR: 0.0723 | MeanErr: 577.02 px
+ID: 051_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.2428 | MIR: 0.2056 | MeanErr: 2.80 px
+ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1263 | MIR: 0.1102 | MeanErr: 17.09 px
+ID: 010_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1170 | MIR: 0.1188 | MeanErr: 7.59 px
+ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1277 | MIR: 0.1383 | MeanErr: 14.19 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.2171 | MIR: 0.1000 | MeanErr: 550.69 px
+ID: 025_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0843 | MIR: 0.1212 | MeanErr: 7.89 px
+ID: 026_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1018 | MIR: 0.1685 | MeanErr: 8.52 px
+ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0944 | MIR: 0.1124 | MeanErr: 13.66 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0506 | MIR: 0.0750 | MeanErr: 104.08 px
+ID: 012_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1371 | MIR: 0.1721 | MeanErr: 5.14 px
+ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9188 | MIR: 0.1011 | MeanErr: 343.37 px
+
+--- Validation Summary ---
+Overall SR_ME (Success Rate @5px):  5.00%
+Overall SR_MAE (Success Rate @10px): 5.00%
+Average Repeatability:              26.37%
+Average Matching Inliers Ratio:     11.21%
+Mean Registration Error:            195.95 px
+Max Registration Error (Average):   313.78 px
+
+--- Validation Epoch 120 ---
+ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9512 | MIR: 0.0959 | MeanErr: 380.32 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1180 | MIR: 0.1270 | MeanErr: 20.25 px
+ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1250 | MIR: 0.0909 | MeanErr: 26.69 px
+ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9745 | MIR: 0.0722 | MeanErr: 159.50 px
+ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8710 | MIR: 0.1143 | MeanErr: 167.98 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.5781 | MIR: 0.0741 | MeanErr: 506.08 px
+ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.2100 | MIR: 0.0896 | MeanErr: 536.27 px
+ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.2986 | MIR: 0.1176 | MeanErr: 338.21 px
+ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0609 | MIR: 0.0667 | MeanErr: 61.96 px
+ID: 051_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.2458 | MIR: 0.2696 | MeanErr: 3.47 px
+ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1045 | MIR: 0.1226 | MeanErr: 12.09 px
+ID: 010_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0904 | MIR: 0.1091 | MeanErr: 12.00 px
+ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1693 | MIR: 0.1319 | MeanErr: 6.90 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8012 | MIR: 0.0800 | MeanErr: 342.12 px
+ID: 025_01 | SR_ME: 0.0 | SR_MAE: 1.0 | Rep: 0.1053 | MIR: 0.1220 | MeanErr: 5.11 px
+ID: 026_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.1257 | MIR: 0.1605 | MeanErr: 3.71 px
+ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1609 | MIR: 0.1098 | MeanErr: 10.00 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9844 | MIR: 0.0870 | MeanErr: 287.45 px
+ID: 012_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1055 | MIR: 0.1128 | MeanErr: 10.77 px
+ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1818 | MIR: 0.0959 | MeanErr: 382.79 px
+
+--- Validation Summary ---
+Overall SR_ME (Success Rate @5px):  10.00%
+Overall SR_MAE (Success Rate @10px): 15.00%
+Average Repeatability:              36.31%
+Average Matching Inliers Ratio:     11.25%
+Mean Registration Error:            163.68 px
+Max Registration Error (Average):   327.39 px
+
+--- Validation Epoch 125 ---
+ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.3663 | MIR: 0.0909 | MeanErr: 370.46 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.4355 | MIR: 0.1039 | MeanErr: 328.47 px
+ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0904 | MIR: 0.0909 | MeanErr: 21.66 px
+ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.4434 | MIR: 0.0667 | MeanErr: 226.20 px
+ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8462 | MIR: 0.0870 | MeanErr: 184.08 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.6418 | MIR: 0.1042 | MeanErr: 598.83 px
+ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1422 | MIR: 0.0779 | MeanErr: 322.44 px
+ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8667 | MIR: 0.1045 | MeanErr: 434.71 px
+ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.4856 | MIR: 0.0779 | MeanErr: 364.93 px
+ID: 051_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.2567 | MIR: 0.2091 | MeanErr: 4.48 px
+ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1399 | MIR: 0.1275 | MeanErr: 8.81 px
+ID: 010_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1733 | MIR: 0.1293 | MeanErr: 6.18 px
+ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1353 | MIR: 0.0926 | MeanErr: 9.15 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.2527 | MIR: 0.0698 | MeanErr: 280.72 px
+ID: 025_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0964 | MIR: 0.1237 | MeanErr: 7.24 px
+ID: 026_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.1250 | MIR: 0.1400 | MeanErr: 3.06 px
+ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1330 | MIR: 0.1099 | MeanErr: 15.20 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9801 | MIR: 0.0941 | MeanErr: 138.89 px
+ID: 012_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.1491 | MIR: 0.1223 | MeanErr: 3.61 px
+ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.2780 | MIR: 0.0652 | MeanErr: 307.86 px
+
+--- Validation Summary ---
+Overall SR_ME (Success Rate @5px):  15.00%
+Overall SR_MAE (Success Rate @10px): 15.00%
+Average Repeatability:              35.19%
+Average Matching Inliers Ratio:     10.44%
+Mean Registration Error:            181.85 px
+Max Registration Error (Average):   326.15 px
+
+--- Validation Epoch 130 ---
+ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.3068 | MIR: 0.0759 | MeanErr: 393.50 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9669 | MIR: 0.1389 | MeanErr: 269.26 px
+ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1257 | MIR: 0.1493 | MeanErr: 13.42 px
+ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.4100 | MIR: 0.0897 | MeanErr: 523.10 px
+ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9799 | MIR: 0.0870 | MeanErr: 166.73 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.6462 | MIR: 0.0638 | MeanErr: 518.62 px
+ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.5260 | MIR: 0.0676 | MeanErr: 308.20 px
+ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.4013 | MIR: 0.1013 | MeanErr: 157.29 px
+ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8786 | MIR: 0.0686 | MeanErr: 525.85 px
+ID: 051_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.2486 | MIR: 0.2479 | MeanErr: 3.40 px
+ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1346 | MIR: 0.1429 | MeanErr: 5.17 px
+ID: 010_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.1587 | MIR: 0.1379 | MeanErr: 3.31 px
+ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1538 | MIR: 0.1402 | MeanErr: 7.09 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1436 | MIR: 0.0814 | MeanErr: 256.09 px
+ID: 025_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1221 | MIR: 0.1442 | MeanErr: 5.74 px
+ID: 026_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.1056 | MIR: 0.1461 | MeanErr: 4.10 px
+ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1005 | MIR: 0.1084 | MeanErr: 17.98 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.6513 | MIR: 0.0741 | MeanErr: 170.93 px
+ID: 012_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1299 | MIR: 0.1048 | MeanErr: 8.35 px
+ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8226 | MIR: 0.1447 | MeanErr: 396.19 px
+
+--- Validation Summary ---
+Overall SR_ME (Success Rate @5px):  15.00%
+Overall SR_MAE (Success Rate @10px): 15.00%
+Average Repeatability:              40.06%
+Average Matching Inliers Ratio:     11.57%
+Mean Registration Error:            187.72 px
+Max Registration Error (Average):   274.16 px
+
+--- Validation Epoch 135 ---
+ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1582 | MIR: 0.0824 | MeanErr: 179.41 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1264 | MIR: 0.1029 | MeanErr: 10.91 px
+ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0914 | MIR: 0.0976 | MeanErr: 15.18 px
+ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.8619 | MIR: 0.0759 | MeanErr: 408.34 px
+ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.5484 | MIR: 0.1039 | MeanErr: 196.68 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.6307 | MIR: 0.0674 | MeanErr: 390.16 px
+ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1238 | MIR: 0.1017 | MeanErr: 432.25 px
+ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.4186 | MIR: 0.0959 | MeanErr: 496.67 px
+ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.9567 | MIR: 0.0759 | MeanErr: 423.95 px
+ID: 051_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.2640 | MIR: 0.2124 | MeanErr: 3.52 px
+ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1450 | MIR: 0.1009 | MeanErr: 16.76 px
+ID: 010_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1133 | MIR: 0.1111 | MeanErr: 7.36 px
+ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1531 | MIR: 0.1800 | MeanErr: 6.48 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1092 | MIR: 0.0800 | MeanErr: 171.11 px
+ID: 025_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.1346 | MIR: 0.1579 | MeanErr: 4.63 px
+ID: 026_01 | SR_ME: 1.0 | SR_MAE: 1.0 | Rep: 0.1620 | MIR: 0.1856 | MeanErr: 4.55 px
+ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1676 | MIR: 0.1136 | MeanErr: 8.56 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.3466 | MIR: 0.1176 | MeanErr: 438.72 px
+ID: 012_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1429 | MIR: 0.1382 | MeanErr: 10.52 px
+ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.3016 | MIR: 0.0988 | MeanErr: 409.43 px
+
+--- Validation Summary ---
+Overall SR_ME (Success Rate @5px):  15.00%
+Overall SR_MAE (Success Rate @10px): 15.00%
+Average Repeatability:              29.78%
+Average Matching Inliers Ratio:     11.50%
+Mean Registration Error:            181.76 px
+Max Registration Error (Average):   297.22 px

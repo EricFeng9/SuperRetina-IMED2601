@@ -220,6 +220,16 @@ def validate(model, val_dataset, device, epoch, save_dir, log_file, train_config
             cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_fix.png'), img_fix_raw)
             cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_moving.png'), img_mov_resized)
 
+            # 绘制并保存带有关键点的图像 (Fix & Moving)
+            kp_f_cv = [cv2.KeyPoint(x=float(pt[0]), y=float(pt[1]), size=10) for pt in kps_f_orig]
+            # 注意: drawKeypoints 会自动处理灰度/彩色输入，返回彩色图像
+            img_fix_kpts = cv2.drawKeypoints(img_fix_raw, kp_f_cv, None, color=(0, 255, 0), flags=0)
+            cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_fix_kpts.png'), img_fix_kpts)
+
+            kp_m_cv = [cv2.KeyPoint(x=float(pt[0]), y=float(pt[1]), size=10) for pt in kps_m_orig]
+            img_mov_kpts = cv2.drawKeypoints(img_mov_resized, kp_m_cv, None, color=(0, 255, 0), flags=0)
+            cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_moving_kpts.png'), img_mov_kpts)
+
             # 如果有足够的匹配点,进行配准
             if len(mkpts0) >= 4:
                 H_pred, _ = cv2.findHomography(mkpts1, mkpts0, cv2.RANSAC, geometric_thresh)
