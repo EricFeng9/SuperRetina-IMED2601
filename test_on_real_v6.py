@@ -11,15 +11,20 @@ import torch.nn.functional as F
 
 # Add local module path
 sys.path.append(os.getcwd())
-print(">>> Starting script... (If you see this, imports are working)", flush=True)
+print(">>> Starting script... (If you see this, basic imports are working)", flush=True)
 
+print(">>> Importing SuperRetinaMultimodal...", flush=True)
 from model.super_retina_multimodal import SuperRetinaMultimodal
+print(">>> Importing common tools...", flush=True)
 from common.common_util import nms, sample_keypoint_desc
+print(">>> Importing datasets...", flush=True)
 from dataset.CF_OCTA_v2_repaired.cf_octa_v2_repaired_dataset import CFOCTADataset
 from dataset.operation_pre_filtered_cffa.operation_pre_filtered_cffa_dataset import CFFADataset
 from dataset.operation_pre_filtered_cfoct.operation_pre_filtered_cfoct_dataset import CFOCTDataset
 from dataset.operation_pre_filtered_octfa.operation_pre_filtered_octfa_dataset import OCTFADataset
+print(">>> Importing measurement tools...", flush=True)
 from measurement_SuperRetina import calculate_metrics, compute_auc
+print(">>> All imports finished!", flush=True)
 
 def draw_matches(img1, kps1, img2, kps2, matches, save_path):
     """Draw matching lines between two images"""
