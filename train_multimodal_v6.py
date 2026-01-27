@@ -101,6 +101,40 @@ def draw_matches(img1, kps1, img2, kps2, matches, save_path):
     
     cv2.imwrite(save_path, out_img)
 
+def visualize_descriptors_pca(desc_fix, desc_mov):
+    """
+    使用 PCA 将高维描述子降维到 RGB 空间进行可视化。
+    注意：两张图必须共用同一个 PCA 空间，颜色才有可比性。
+    """
+    B, C, H, W = desc_fix.shape
+    # 展平并拼接
+    feat_fix = desc_fix[0].view(C, -1).permute(1, 0) # [H*W, C]
+    feat_mov = desc_mov[0].view(C, -1).permute(1, 0) # [H*W, C]
+    combined = torch.cat([feat_fix, feat_mov], dim=0) # [2*H*W, C]
+    
+    # 归一化
+    combined = F.normalize(combined, dim=-1)
+    
+    # 快速 PCA 降维 (使用 torch.pca_lowrank)
+    try:
+        _, _, V = torch.pca_lowrank(combined, q=3, niter=2)
+        pca_feat = torch.mm(combined, V) # [2*H*W, 3]
+        
+        # 缩放到 [0, 1]
+        pca_feat_min = pca_feat.min(dim=0, keepdim=True)[0]
+        pca_feat_max = pca_feat.max(dim=0, keepdim=True)[0]
+        pca_feat = (pca_feat - pca_feat_min) / (pca_feat_max - pca_feat_min + 1e-8)
+        
+        # 分解回两张图
+        pca_fix = pca_feat[:H*W].view(H, W, 3).cpu().numpy()
+        pca_mov = pca_feat[H*W:].view(H, W, 3).cpu().numpy()
+        
+        return (pca_fix * 255).astype(np.uint8), (pca_mov * 255).astype(np.uint8)
+    except:
+        # 兜底：如果 PCA 失败，返回全黑图
+        black = np.zeros((H, W, 3), dtype=np.uint8)
+        return black, black
+
 def validate(model, val_dataset, device, epoch, save_dir, log_file, train_config, mode):
     """
     验证函数:评估模型在真实数据集上的表现
@@ -167,6 +201,14 @@ def validate(model, val_dataset, device, epoch, save_dir, log_file, train_config
             # 提取跨模态特征
             det_fix, desc_fix = model.network(img0_input, mode='fix')
             det_mov, desc_mov = model.network(img1_tensor, mode='mov')
+            
+            # --- 新增: 描述子 PCA 可视化 ---
+            # 重点: 只有当颜色在两张图中分布一致时，才说明描述子对齐了
+            pca_fix, pca_mov = visualize_descriptors_pca(desc_fix, desc_mov)
+            cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_desc_pca_fix.png'), 
+                        cv2.cvtColor(pca_fix, cv2.COLOR_RGB2BGR))
+            cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_desc_pca_mov.png'), 
+                        cv2.cvtColor(pca_mov, cv2.COLOR_RGB2BGR))
             
             # 有效区域屏蔽,防止边缘伪影干扰关键点提取
             valid_mask = (img1_tensor > 0.05).float()
