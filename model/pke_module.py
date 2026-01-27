@@ -21,11 +21,11 @@ def mapping_points(grid, points, h, w):
     for s, k in enumerate(grid_points):  # 过滤超出图像范围的点
         idx = (k[:, 0] < 1) & (k[:, 0] > -1) & (k[:, 1] < 1) & (
                 k[:, 1] > -1)
-        gp = grid_points[s][idx]
-        # 将 [-1, 1] 的归一化坐标转换为像素坐标
-        gp[:, 0] = (gp[:, 0] + 1) / 2 * (w - 1)
-        gp[:, 1] = (gp[:, 1] + 1) / 2 * (h - 1)
-        affine_points.append(gp)
+        # 将 [-1, 1] 的归一化坐标转换为像素坐标 (避免原地修改 gp)
+        gp_x = (k[:, 0] + 1) / 2 * (w - 1)
+        gp_y = (k[:, 1] + 1) / 2 * (h - 1)
+        gp_new = torch.stack([gp_x, gp_y], dim=-1)
+        affine_points.append(gp_new)
         filter_points.append(points[s][idx])
 
     return filter_points, affine_points
