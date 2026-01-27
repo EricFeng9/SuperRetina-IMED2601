@@ -11,6 +11,7 @@ import torch.nn.functional as F
 
 # Add local module path
 sys.path.append(os.getcwd())
+print(">>> Starting script... (If you see this, imports are working)", flush=True)
 
 from model.super_retina_multimodal import SuperRetinaMultimodal
 from common.common_util import nms, sample_keypoint_desc
@@ -81,6 +82,7 @@ def visualize_descriptors_pca(desc_fix, desc_mov):
         return np.zeros((H, W, 3), dtype=np.uint8), np.zeros((H, W, 3), dtype=np.uint8)
 
 def test_on_real():
+    print(">>> Function test_on_real() called", flush=True)
     parser = argparse.ArgumentParser(description="SuperRetina Real Data Evaluation Script (v6)")
     parser.add_argument('-n', '--name', type=str, required=True, help='Experiment name')
     parser.add_argument('-latest', '--latestcheckpoint', action='store_true', help='Use latest checkpoint')
