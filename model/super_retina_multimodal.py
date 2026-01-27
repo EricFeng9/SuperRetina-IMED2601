@@ -289,9 +289,13 @@ class SuperRetinaMultimodal(nn.Module):
         device = desc_fix.device
         B, C, H_feat, W_feat = desc_fix.shape
         
-        # 将 Mask 下采样到特征图尺寸 (通常是 1/8)
-        mask_feat = F.interpolate(vessel_mask, size=(H_feat, W_feat), mode='nearest')
-        
+        # 处理无掩码情况：如果 vessel_mask 为 None，则默认全图为 1
+        if vessel_mask is not None:
+            # 将 Mask 下采样到特征图尺寸 (通常是 1/8)
+            mask_feat = F.interpolate(vessel_mask, size=(H_feat, W_feat), mode='nearest')
+        else:
+            mask_feat = torch.ones((B, 1, H_feat, W_feat), device=desc_fix.device)
+            
         total_loss = 0.0
         for b in range(B):
             # 1. 提取当前样本的描述子图并展平
