@@ -198,22 +198,23 @@ class SuperRetinaMultimodal(nn.Module):
 
         return semi, desc
 
-    def descriptor_loss(self, detector_pred, label_point_positions, descriptor_pred,
+    def descriptor_loss(self, detector_pred, label_point_positions, descriptor_pred_map,
                         affine_descriptor_pred, grid_inverse, affine_detector_pred=None):
         """
         计算描述子损失 (Triplet Loss)
         强制相同解剖点在不同模态下的特征描述子尽可能接近
         """
+        # 核心修复：克隆 detector_pred，防止对原始梯度张量的原地修改导致 Autograd 报错
+        detector_pred_samp = detector_pred.clone()
+
         if not self.PKE_learn:
-            detector_pred[:] = 0  # 冷启动阶段仅使用初始种子点
-        # 将初始标签点权重大幅提升，确保它们被选中进行匹配
-        detector_pred[label_point_positions == 1] = 10
+            detector_pred_samp[:] = 0  # 冷启动阶段仅使用初始种子点
+        # 将初始标签点权权重大幅提升，确保它们被选中进行匹配
+        detector_pred_samp[label_point_positions == 1] = 10
         
         # 采样关键点及其对应的描述子
-        # descriptors: 固定图像上的特征
-        # affine_descriptors: 运动图像（变换后）上对应的特征
         descriptors, affine_descriptors, keypoints = \
-            sample_descriptors(detector_pred, descriptor_pred, affine_descriptor_pred, grid_inverse,
+            sample_descriptors(detector_pred_samp, descriptor_pred_map, affine_descriptor_pred, grid_inverse,
                                nms_size=self.nms_size, nms_thresh=self.nms_thresh, scale=self.scale,
                                affine_detector_pred=affine_detector_pred)
 
@@ -405,8 +406,8 @@ class SuperRetinaMultimodal(nn.Module):
 
             # --- 描述子损失 (回归回归 Triplet) ---
             loss_descriptor, _ = self.descriptor_loss(
-                detector_pred_fix, label_point_positions, descriptor_pred_fix,
-                descriptor_pred_mov, grid_inverse, detector_pred_mov
+                detector_pred_fix.clone(), label_point_positions, descriptor_pred_fix,
+                descriptor_pred_mov, grid_inverse, detector_pred_mov.clone()
             )
 
             # --- Symmetric Mask Constraint (双边对称背景抑制) ---
