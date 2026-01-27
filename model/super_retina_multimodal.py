@@ -279,228 +279,114 @@ class SuperRetinaMultimodal(nn.Module):
         
         return loss, True
 
-    def descriptor_loss_warmup(self, label_point_positions, descriptor_pred_fix,
-                               descriptor_pred_mov, H_0to1, max_points_per_img=512):
+    def dense_alignment_loss(self, desc_fix, desc_mov, vessel_mask, num_samples=1024, temperature=0.07):
         """
-        描述子热身阶段的损失 (改进版: 跨图像负样本采样):
-        使用数据集中提供的真值仿射矩阵 H_0to1, 将 CF 上的 vessel_keypoints
-        映射到 moving 图像上, 直接构造跨模态正样本对, 再进行三元组损失。
-        
-        改进: 负样本不仅来自同一张 moving 图像，还包括 batch 内其他图像的点。
-        这迫使模型产生全局可区分的描述子，防止描述子坍塌。
+        v6.2 Phase 0: 密集对齐损失 (Efficient Dense InfoNCE)
+        目标: 在解剖结构完全一致的情况下，强制 Moving 分支模仿 Fix 分支的特征分布。
+        策略: 分层采样 (50% 血管, 50% 随机) + 样本内对比。
         """
-        device = descriptor_pred_fix.device
-        B, _, H, W = label_point_positions.shape
-        D = descriptor_pred_fix.shape[1]
-
-        # 将 H_0to1 转到当前设备, 形状应为 [B, 3, 3]
-        if H_0to1 is None:
-            # 没有提供真值几何, 返回 0 loss, 但保持梯度图结构
-            return torch.tensor(0., requires_grad=True, device=device), False
-
-        if H_0to1.dim() == 2:
-            H_0to1 = H_0to1.unsqueeze(0)
-        H_0to1 = H_0to1.to(device)
-
-        # ===== 第一阶段: 收集所有样本的描述子 =====
-        all_desc_fix = []  # 每个样本的 fix 描述子列表 [N_b, D]
-        all_desc_mov = []  # 每个样本的 mov 描述子列表 [N_b, D]
-        sample_sizes = []  # 每个样本的点数
-
-        for b in range(B):
-            # 取出该样本的关键点掩码 [H, W]
-            kp_mask = (label_point_positions[b, 0] > 0.5)
-            ys, xs = torch.where(kp_mask)
-            if ys.numel() == 0:
-                all_desc_fix.append(None)
-                all_desc_mov.append(None)
-                sample_sizes.append(0)
-                continue
-
-            # 随机下采样, 避免显存过大
-            if ys.numel() > max_points_per_img:
-                idx = torch.randperm(ys.numel(), device=device)[:max_points_per_img]
-                ys = ys[idx]
-                xs = xs[idx]
-
-            # 构造齐次坐标并应用 H_0to1, 得到 moving 图像上的对应点
-            ones = torch.ones_like(xs, dtype=torch.float32, device=device)
-            pts_fix = torch.stack([xs.float(), ys.float(), ones], dim=0)  # [3, N]
-            H_mat = H_0to1[b]  # [3, 3] 真值仿射矩阵
-            pts_mov = H_mat @ pts_fix  # [3, N]
-
-            # 归一化 (一般仿射, pts_mov[2]≈1)
-            xs_mov = pts_mov[0] / (pts_mov[2] + 1e-6)
-            ys_mov = pts_mov[1] / (pts_mov[2] + 1e-6)
-
-            # 只保留在图像内部的点
-            valid = (xs_mov >= 0) & (xs_mov <= (W - 1)) & (ys_mov >= 0) & (ys_mov <= (H - 1))
-            if valid.sum() == 0:
-                all_desc_fix.append(None)
-                all_desc_mov.append(None)
-                sample_sizes.append(0)
-                continue
-
-            xs_fix_valid = xs[valid]
-            ys_fix_valid = ys[valid]
-            xs_mov_valid = xs_mov[valid]
-            ys_mov_valid = ys_mov[valid]
-
-            # 组装成 [N, 2] 的 (x, y) 坐标
-            kps_fix = torch.stack([xs_fix_valid, ys_fix_valid], dim=1)  # [N, 2]
-            kps_mov = torch.stack([xs_mov_valid, ys_mov_valid], dim=1)  # [N, 2]
-
-            # 基于坐标从 descriptor feature map 中采样描述子
-            desc_fix = sample_keypoint_desc(kps_fix[None], descriptor_pred_fix[b:b+1], s=self.scale)[0]   # [C, N]
-            desc_mov = sample_keypoint_desc(kps_mov[None], descriptor_pred_mov[b:b+1], s=self.scale)[0]   # [C, N]
-
-            n = desc_fix.shape[1]
-            if n == 0 or n > 1000:
-                all_desc_fix.append(None)
-                all_desc_mov.append(None)
-                sample_sizes.append(0)
-                continue
-
-            all_desc_fix.append(desc_fix.permute(1, 0))  # [N, D]
-            all_desc_mov.append(desc_mov.permute(1, 0))  # [N, D]
-            sample_sizes.append(n)
-
-        # ===== 第二阶段: 构建跨图像负样本池 =====
-        # 将所有有效的 moving 描述子拼接成一个大池子
-        valid_mov_list = [d for d in all_desc_mov if d is not None]
-        if len(valid_mov_list) == 0:
-            return torch.tensor(0., requires_grad=True, device=device), False
+        device = desc_fix.device
+        B, C, H_feat, W_feat = desc_fix.shape
         
-        all_mov_pool = torch.cat(valid_mov_list, dim=0)  # [Total_N, D]
-        total_pool_size = all_mov_pool.shape[0]
-
-        # ===== 第三阶段: 为每个 anchor 采样负样本 =====
-        anchor_list = []
-        positive_list = []
-        negatives_hard_list = []
-        negatives_cross_list = []  # 跨图像负样本
-
-        # 计算每个样本在 pool 中的起始索引
-        pool_offsets = [0]
-        for size in sample_sizes:
-            pool_offsets.append(pool_offsets[-1] + size)
-
+        # 将 Mask 下采样到特征图尺寸 (通常是 1/8)
+        mask_feat = F.interpolate(vessel_mask, size=(H_feat, W_feat), mode='nearest')
+        
+        total_loss = 0.0
         for b in range(B):
-            if all_desc_fix[b] is None:
-                continue
+            # 1. 提取当前样本的描述子图并展平
+            feat_fix = desc_fix[b].view(C, -1).permute(1, 0) # [N_total, C]
+            feat_mov = desc_mov[b].view(C, -1).permute(1, 0) # [N_total, C]
+            m = mask_feat[b, 0].view(-1) # [N_total]
             
-            desc_fix = all_desc_fix[b]  # [N, D]
-            desc_mov = all_desc_mov[b]  # [N, D]
-            n = desc_fix.shape[0]
+            # 2. 分层采样正样本索引 (Anchors)
+            vessel_indices = torch.where(m > 0.5)[0]
+            all_indices = torch.arange(H_feat * W_feat, device=device)
             
-            # 当前样本在 pool 中的范围
-            start_idx = pool_offsets[b]
-            end_idx = pool_offsets[b + 1]
+            # --- 50% 血管采样 ---
+            if vessel_indices.numel() > (num_samples // 2):
+                idx_v = vessel_indices[torch.randperm(vessel_indices.numel())[:num_samples // 2]]
+            else:
+                idx_v = vessel_indices # 血管点全取
             
-            # ----- 同图像内硬负样本 (保留原有逻辑) -----
-            with torch.no_grad():
-                dis = torch.cdist(desc_fix, desc_mov, p=2)  # [N, N]
-                ar = torch.arange(n, device=device)
-                dis[ar, ar] = dis.max() + 1  # 排除正样本本身
-                neg_index_hard = dis.argmin(dim=1)
+            # --- 50% 随机全图采样 ---
+            idx_r = all_indices[torch.randperm(all_indices.numel())[:num_samples - idx_v.numel()]]
             
-            # ----- 跨图像负样本 (从整个 pool 中采样，排除当前样本) -----
-            # 为每个 anchor 随机采样一个来自其他图像的负样本
-            neg_index_cross = []
-            for j in range(n):
-                # 从 pool 中排除当前样本的范围
-                if total_pool_size == n:
-                    # 只有一个样本，退回到同图像采样
-                    neg_idx = random.randint(0, n - 1)
-                    if neg_idx == j:
-                        neg_idx = (neg_idx + 1) % n
-                    neg_index_cross.append(neg_idx + start_idx)
-                else:
-                    # 从其他样本中采样
-                    while True:
-                        idx = random.randint(0, total_pool_size - 1)
-                        if idx < start_idx or idx >= end_idx:
-                            break
-                    neg_index_cross.append(idx)
-            neg_index_cross = torch.tensor(neg_index_cross, dtype=torch.long, device=device)
-
-            anchor_list.append(desc_fix)
-            positive_list.append(desc_mov)
-            negatives_hard_list.append(desc_mov[neg_index_hard])
-            negatives_cross_list.append(all_mov_pool[neg_index_cross])
-
-        if len(anchor_list) == 0:
-            return torch.tensor(0., requires_grad=True, device=device), False
-
-        anchor = torch.cat(anchor_list, dim=0)  # [Total_N, D]
-        positive = torch.cat(positive_list, dim=0)  # [Total_N, D]
-
-        # 归一化描述子 (InfoNCE 使用余弦相似度)
-        anchor = F.normalize(anchor, dim=-1, p=2)
-        positive = F.normalize(positive, dim=-1, p=2)
-        all_mov_pool_norm = F.normalize(all_mov_pool, dim=-1, p=2)  # [Total_N, D]
-
-        # ===== 使用 InfoNCE Loss =====
-        # 将 batch 内所有 moving 描述子作为负样本池
-        # 缩放系数 0.2: 使 Desc Loss 和 Det Loss 量级平衡 (原始 InfoNCE 约 0.8~0.9, 缩放后约 0.16~0.18)
-        loss_raw = info_nce_loss(anchor, positive, all_mov_pool_norm, temperature=0.07)
-        loss = loss_raw * 0.2  # 缩放系数，打印值即为加权后的值
-        return loss, True
+            # 组合采样点索引
+            idx = torch.cat([idx_v, idx_r])
+            
+            # 3. 构造正负样本对
+            # Anchor 来自 Fix (被 Detach), Positive 来自 Moving (带梯度)
+            anchor = F.normalize(feat_fix[idx].detach(), dim=-1) # [N, C]
+            positive = F.normalize(feat_mov[idx], dim=-1)         # [N, C]
+            
+            # 负样本池: 使用当前图内所有的 Moving 特征 (或者更高效地只用当前图的特征)
+            # 为了极端效率，我们只用当前图的特征作为负样本库
+            pool_mov = F.normalize(feat_mov, dim=-1) # [N_total, C]
+            
+            # 4. 计算 InfoNCE (密集矩阵运算)
+            # 计算 Similarity: [N, C] @ [C, N_total] -> [N, N_total]
+            logits = torch.mm(anchor, pool_mov.t()) / temperature 
+            
+            # 对应的正样本索引即为 idx 在 pool 中的位置
+            # 由于 pool_mov 是按顺序展平的，所以 idx 就是对应的位置
+            targets = idx 
+            
+            loss = F.cross_entropy(logits, targets)
+            total_loss += loss
+            
+        return total_loss / B
     
     def forward(self, fix_img, mov_img, label_point_positions=None, value_map=None, learn_index=None,
                 phase=3, vessel_mask=None, H_0to1=None, pke_supervised=False):
         """
-        v6 主前向传播逻辑 (Dual-Path + GT Anchor + Mask Constraint)
-        :param label_point_positions: GT Keypoints (Anchors)
-        :param vessel_mask: GT Vessel Mask (用于背景抑制)
+        v6.2 主前向传播逻辑: 对齐热身 (Phase 0) + 对称约束 PKE (Phase 1+)
         """
-        
-        # 1. 提取特征 (Dual-Path or Shared, controlled by init)
+        # 1. 提取特征
         detector_pred_fix, descriptor_pred_fix = self.network(fix_img, mode='fix')
         detector_pred_mov, descriptor_pred_mov = self.network(mov_img, mode='mov')
         
-        enhanced_label_pts = None
-        enhanced_label = None
-        loss_detector_num = 0
-        loss_descriptor_num = 0
-
         # 推断模式
         if label_point_positions is None:
              return detector_pred_fix, descriptor_pred_fix
 
-        # 训练模式准备
         B, _, H, W = detector_pred_fix.shape
-        loss_detector = torch.tensor(0., requires_grad=True).to(fix_img)
-        loss_descriptor = torch.tensor(0., requires_grad=True).to(fix_img)
+        enhanced_label_pts = None
+        enhanced_label = None
 
-        # v6: 始终处于 Phase 3 逻辑 (Joint Training)
+        # ==========================================
+        # v6.2 Phase 0: Modality Alignment Warmup
+        # ==========================================
+        if phase == 0:
+            # 执行对齐热身：让 Moving 模仿 Fix
+            loss_descriptor = self.dense_alignment_loss(descriptor_pred_fix, descriptor_pred_mov, vessel_mask)
+            loss_detector = torch.tensor(0.0, device=fix_img.device, requires_grad=True)
+            
+            return loss_detector + loss_descriptor, 0, loss_detector.detach().sum(), \
+                   loss_descriptor.detach().sum(), None, \
+                   None, detector_pred_fix, 0, B
+
+        # ==========================================
+        # v6.2 Phase 3: Hybrid PKE + Symmetric Mask
+        # ==========================================
         if phase == 3:
-            loss_detector_num = len(learn_index[0])
-            loss_descriptor_num = fix_img.shape[0]
-
-            # 准备 Grid Inverse (Fix -> Mov 映射)用于 PKE 的几何一致性检查
+            # 准备 Grid Inverse (Fix -> Mov 映射) 用于 PKE 和 Mask Warping
             if H_0to1 is not None:
                 if H_0to1.dim() == 2: H_0to1 = H_0to1.unsqueeze(0)
                 grid_list = []
                 ys, xs = torch.meshgrid(torch.arange(H, device=fix_img.device), torch.arange(W, device=fix_img.device), indexing='ij')
                 pts = torch.stack([xs.float(), ys.float(), torch.ones_like(xs, dtype=torch.float32)], dim=-1).view(-1, 3)
-                
                 for b in range(B):
-                    # Fix -> Moving 映射
                     pts_mov = pts @ H_0to1[b].t()
-                    u = pts_mov[:, 0] / (pts_mov[:, 2] + 1e-6)
-                    v = pts_mov[:, 1] / (pts_mov[:, 2] + 1e-6)
-                    u = 2.0 * u / (W - 1) - 1.0
-                    v = 2.0 * v / (H - 1) - 1.0
+                    u = (2.0 * (pts_mov[:, 0] / (pts_mov[:, 2] + 1e-6)) / (W - 1)) - 1.0
+                    v = (2.0 * (pts_mov[:, 1] / (pts_mov[:, 2] + 1e-6)) / (H - 1)) - 1.0
                     grid_list.append(torch.stack([u, v], dim=-1).view(H, W, 2))
                 grid_inverse = torch.stack(grid_list, dim=0)
             else:
-                 grid_inverse = torch.zeros(B, H, W, 2).to(fix_img.device)
+                grid_inverse = torch.zeros(B, H, W, 2).to(fix_img.device)
 
             value_map_update = None
             
             # --- PKE 核心过程 ---
-            # v6: PKE 始终开启，利用 GT (label_point_positions) 作为高质量种子进行挖掘
             if len(learn_index[0]) != 0:
                 loss_detector, number_pts, value_map_update, enhanced_label_pts, enhanced_label = \
                     pke_learn(detector_pred_fix[learn_index], descriptor_pred_fix[learn_index],
@@ -513,35 +399,34 @@ class SuperRetinaMultimodal(nn.Module):
             if value_map is not None and value_map_update is not None:
                 value_map[learn_index] = value_map_update.to(value_map.dtype)
 
-            # --- v6 Constraint A: GT Anchor Alignment (强监督锚点对齐) ---
-            # 无论 PKE 挖掘了什么，我们始终计算 GT 点位置的描述子 Loss
-            # 这强迫 Fix/Mov 双路编码器在解剖结构上对齐
-            loss_descriptor, _ = self.descriptor_loss_warmup(
-                label_point_positions, descriptor_pred_fix, descriptor_pred_mov, H_0to1
+            # --- 描述子损失 (回归回归 Triplet) ---
+            loss_descriptor, _ = self.descriptor_loss(
+                detector_pred_fix, label_point_positions, descriptor_pred_fix,
+                descriptor_pred_mov, grid_inverse, detector_pred_mov
             )
-            # 给予极高权重，使其成为“定海神针”
-            loss_descriptor = loss_descriptor * 10.0
 
-            # --- v6 Constraint B: Mask-Constrained Detector (背景抑制) ---
-            # 任何落在 Mask 外的高响应都是错误的
+            # --- Symmetric Mask Constraint (双边对称背景抑制) ---
             loss_suppress = torch.tensor(0., device=fix_img.device)
             if vessel_mask is not None:
-                # 生成背景 Mask (Mask 为 0 的地方是背景，值设为 1)
-                bg_mask = 1.0 - vessel_mask
+                bg_mask_fix = 1.0 - vessel_mask
+                # 1. 约束 Fix 支路
+                suppress_fix = (detector_pred_fix * bg_mask_fix).mean()
                 
-                # 计算背景区域的 Heatmap 均值 (希望它趋近 0)
-                # 对 Fix 和 Mov 分支都进行约束
-                suppress_fix = (detector_pred_fix * bg_mask).mean()
-                suppress_mov = (detector_pred_mov * F.grid_sample(bg_mask, grid_inverse, align_corners=True)).mean() 
-                # 注意: Mov分支的Mask需要Warp过去，或者简单地只约束Fix分支。
-                # 为了稳妥，只约束 Fix 分支，因为 Fix Mask 是准确的 GT
+                # 2. 约束 Moving 支路 (将背景 Mask Warp 过去)
+                # 注意: bg_mask_fix 是在 Fix 空间的，grid_inverse 是 Fix->Mov 的映射，
+                # 但 F.grid_sample 的 grid 含义是从输出坐标找输入像素。
+                # 所以要让 Mov 支路受限，我们需要把 Fix Mask Warp 到 Mov 空间。
+                # 这里我们简化处理：利用 grid_inverse 将 bg_mask 从 Fix 映射到 Mov。
+                bg_mask_mov = F.grid_sample(bg_mask_fix, grid_inverse, mode='nearest', align_corners=True)
+                suppress_mov = (detector_pred_mov * bg_mask_mov).mean()
                 
-                loss_suppress = suppress_fix * 0.1 # 权重 0.1
+                # 汇总抑制损失 (降低权重至 0.2 以防坍缩)
+                loss_suppress = (suppress_fix + suppress_mov) * 0.2
                 
             loss_detector = loss_detector + loss_suppress
             
             return loss_detector + loss_descriptor, 0, loss_detector.detach().sum(), \
                    loss_descriptor.detach().sum(), enhanced_label_pts, \
-                   enhanced_label, detector_pred_fix, loss_detector_num, loss_descriptor_num
+                   enhanced_label, detector_pred_fix, len(learn_index[0]), B
 
         return torch.tensor(0.), 0, 0, 0, None, None, None, 0, 0
