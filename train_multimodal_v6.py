@@ -428,6 +428,7 @@ def train_multimodal():
     parser.add_argument('--batch_size', '-b', type=int, help='Batch size for training', default=4)
     parser.add_argument('--geometric_thresh', '-g', type=float, help='RANSAC geometric threshold for PKE', default=0.7)
     parser.add_argument('--content_thresh', '-c', type=float, help='Lowe ratio threshold for feature matching', default=0.8)
+    parser.add_argument('--start_point', '-s', type=str, help='Path to checkpoint to resume from', default=None)
     args = parser.parse_args()
     
     if args.name:
@@ -498,14 +499,25 @@ def train_multimodal():
     # 初始化多模态 SuperRetina 模型
     model = SuperRetinaMultimodal(train_config, device=device)
     
-    if train_config['load_pre_trained_model']:
+    optimizer = optim.Adam(model.parameters(), lr=1e-4)
+    
+    start_epoch = 1
+    # 优先使用命令行指定的 --start_point 恢复训练
+    if args.start_point and os.path.exists(args.start_point):
+        log_print(f"Resuming from checkpoint: {args.start_point}")
+        checkpoint = torch.load(args.start_point, map_location=device)
+        model.load_state_dict(checkpoint['net'])
+        if 'optimizer' in checkpoint:
+            optimizer.load_state_dict(checkpoint['optimizer'])
+        start_epoch = checkpoint.get('epoch', 0) + 1
+        log_print(f"Resuming from Epoch {start_epoch}")
+    # 其次使用配置文件里的 pretrained_path (仅加载权重)
+    elif train_config['load_pre_trained_model']:
         path = train_config['pretrained_path']
         if os.path.exists(path):
-            log_print(f"Loading pretrained model from {path}")
+            log_print(f"Loading pretrained weight from {path}")
             checkpoint = torch.load(path, map_location=device)
             model.load_state_dict(checkpoint['net'])
-            
-    optimizer = optim.Adam(model.parameters(), lr=1e-4)
     
     num_epochs = train_config['num_epoch']
     pke_start_epoch = train_config['pke_start_epoch']
@@ -553,7 +565,7 @@ def train_multimodal():
     _ = validate(model, val_set, device, 0, save_root, log_file, train_config, reg_type)
 
     # 训练循环
-    for epoch in range(1, num_epochs + 1):
+    for epoch in range(start_epoch, num_epochs + 1):
         if epoch <= phase0_epochs:
             phase = 0
             pke_supervised = False

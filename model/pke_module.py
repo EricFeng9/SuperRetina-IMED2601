@@ -18,12 +18,14 @@ def mapping_points(grid, points, h, w):
                    enumerate(points)]
     filter_points = []
     affine_points = []
-    for s, k in enumerate(grid_points):  # 过滤超出图像范围的点
-        idx = (k[:, 0] < 1) & (k[:, 0] > -1) & (k[:, 1] < 1) & (
-                k[:, 1] > -1)
-        # 将 [-1, 1] 的归一化坐标转换为像素坐标 (避免原地修改 gp)
-        gp_x = (k[:, 0] + 1) / 2 * (w - 1)
-        gp_y = (k[:, 1] + 1) / 2 * (h - 1)
+    for s, k in enumerate(grid_points):
+        # 过滤超出图像范围的点
+        idx = (k[:, 0] < 1) & (k[:, 0] > -1) & (k[:, 1] < 1) & (k[:, 1] > -1)
+        
+        # 过滤并转换：只对落在图像范围内的点进行坐标转换
+        gp_filtered = k[idx]
+        gp_x = (gp_filtered[:, 0] + 1) / 2 * (w - 1)
+        gp_y = (gp_filtered[:, 1] + 1) / 2 * (h - 1)
         gp_new = torch.stack([gp_x, gp_y], dim=-1)
         affine_points.append(gp_new)
         filter_points.append(points[s][idx])
@@ -81,9 +83,10 @@ def geometric_filter(affine_detector_pred, points, affine_points, max_num=1024, 
     affine_geo_points = []
     for s, k in enumerate(affine_points):
         # 采样运动图像检测图在对应坐标处的概率值
+        # 采样运动图像检测图在对应坐标处的概率值
         sample_aff_values = affine_detector_pred[s, 0, k[:, 1].long(), k[:, 0].long()]
-        # 仅保留响应值大于阈值的点 (即 P > 0.5 且 P' > 0.5)
-        check = sample_aff_values.squeeze() >= geometric_thresh
+        # 仅保留响应值大于阈值的点。使用 view(-1) 确保 check 始终是 1D mask
+        check = sample_aff_values.view(-1) >= geometric_thresh
         geo_points.append(points[s][check][:max_num])
         affine_geo_points.append(k[check][:max_num])
 
