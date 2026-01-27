@@ -387,11 +387,15 @@ class SuperRetinaMultimodal(nn.Module):
             value_map_update = None
             
             # --- PKE 核心过程 ---
+            # 引入 .clone() 彻底隔离 PKE 内部可能的原地修改，保护计算图
             if len(learn_index[0]) != 0:
                 loss_detector, number_pts, value_map_update, enhanced_label_pts, enhanced_label = \
-                    pke_learn(detector_pred_fix[learn_index], descriptor_pred_fix[learn_index],
-                              grid_inverse[learn_index], detector_pred_mov[learn_index],
-                              descriptor_pred_mov[learn_index], self.kernel, self.dice,
+                    pke_learn(detector_pred_fix[learn_index].clone(), 
+                              descriptor_pred_fix[learn_index].clone(),
+                              grid_inverse[learn_index], 
+                              detector_pred_mov[learn_index].clone(),
+                              descriptor_pred_mov[learn_index].clone(), 
+                              self.kernel, self.dice,
                               label_point_positions[learn_index], value_map[learn_index],
                               self.config, PKE_learn=True, vessel_mask=vessel_mask[learn_index] if vessel_mask is not None else None)
             
