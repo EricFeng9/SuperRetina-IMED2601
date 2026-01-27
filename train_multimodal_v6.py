@@ -443,6 +443,17 @@ def train_multimodal():
         config['PKE']['geometric_thresh'] = args.geometric_thresh
     if args.content_thresh is not None:
         config['PKE']['content_thresh'] = args.content_thresh
+    
+    # --- 新增: 自动从 start_point 路径中提取实验名称 ---
+    if args.start_point and not args.name:
+        # 路径格式通常为: ./save/cffa/EXP_NAME/latestpoint/checkpoint.pth
+        # 取 checkpoint.pth 的上两级目录名作为实验名称
+        try:
+            detected_name = os.path.basename(os.path.dirname(os.path.dirname(os.path.abspath(args.start_point))))
+            config['MODEL']['name'] = detected_name
+            print(f"Auto-detected experiment name from path: {detected_name}")
+        except:
+            pass
         
     # v6: Dual-Path Encoder (False)
     config['MODEL']['shared_encoder'] = False
@@ -510,6 +521,13 @@ def train_multimodal():
         if 'optimizer' in checkpoint:
             optimizer.load_state_dict(checkpoint['optimizer'])
         start_epoch = checkpoint.get('epoch', 0) + 1
+        
+        # 核心修复：恢复最佳指标值，确保 bestcheckpoint 逻辑延续
+        if 'mace' in checkpoint:
+            best_mace = checkpoint['mace']
+            best_val_mace = best_mace
+            log_print(f"Restored Best MACE: {best_mace:.2f} px")
+            
         log_print(f"Resuming from Epoch {start_epoch}")
     # 其次使用配置文件里的 pretrained_path (仅加载权重)
     elif train_config['load_pre_trained_model']:
