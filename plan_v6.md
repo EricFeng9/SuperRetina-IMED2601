@@ -23,7 +23,7 @@
 *   **目标**: 解耦模态差异。让双路 Encoder 在无几何畸变的对齐状态下，学习将 CF 的“黑血管”与 FA 的“白血管”映射到同一描述子分布。
 *   **操作**:
     1.  **输入**: 使用原图 `fix` 和未形变的 `moving_origin` (解剖全对齐)。
-    2.  **约束**: 通过 Detach 限制 Path A (Fix) 的梯度，迫使 Path B (Mov) 单向向 Fix 靠拢（防止全 0 平凡解）。
+    2.  **约束**: (已修改) 取消单向 Grident Detach，允许双路联合优化 (Joint Optimization)，利用 InfoNCE 的强对比学习特性防止特征坍缩。
     3.  **Loss: 高效密集 InfoNCE (Efficient Dense InfoNCE)**:
         *   **计算尺度**: 在 $1/8$ 特征图分辨率 ($64 \times 64$) 执行。
         *   **分层采样 (Stratified Sampling)**: 动态选取 $N$ (例如 1024) 个锚点点对。
