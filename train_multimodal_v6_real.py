@@ -70,12 +70,10 @@ class RealDataV6Wrapper(Dataset):
         
         H_0to1 = np.eye(3, dtype=np.float32)
         H_inv = np.eye(3, dtype=np.float32)
-        has_gt = False
         if len(pts_fix_512) >= 4:
             H, _ = cv2.findHomography(pts_fix_512, pts_mov_512, cv2.RANSAC, 5.0)
             if H is not None:
                 H_0to1 = H.astype(np.float32)
-                has_gt = True
                 try: H_inv = np.linalg.inv(H_0to1)
                 except: pass
 
@@ -93,12 +91,11 @@ class RealDataV6Wrapper(Dataset):
             'image1_origin': torch.from_numpy(img1_aligned).float().unsqueeze(0) / 255.0,
             'T_0to1': torch.from_numpy(H_0to1),
             'vessel_mask0': torch.from_numpy(seed_map).unsqueeze(0),
-            'has_gt': has_gt,
             'pair_names': (os.path.basename(path_fix), os.path.basename(path_mov))
         }
 
 # ============================================================================
-# 可视化增强 (完全复用 v6)
+# 辅助函数 (可视化与评估) - 同 v6 分支完全对齐
 # ============================================================================
 
 def compute_checkerboard(img1, img2, n_grid=4):
@@ -184,69 +181,86 @@ def validate(model, val_dataset, device, epoch, save_root, train_config, mode):
             det_fix, desc_fix = model.network(img0, mode='fix')
             det_mov, desc_mov = model.network(img1, mode='mov')
             
+            # 1. PCA Descriptor Visual
             pca_fix, pca_mov = visualize_descriptors_pca(desc_fix, desc_mov)
             cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_pca_fix.png'), cv2.cvtColor(pca_fix, cv2.COLOR_RGB2BGR))
             cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_pca_mov.png'), cv2.cvtColor(pca_mov, cv2.COLOR_RGB2BGR))
             
+            # 2. Keypoint Extraction
             kps_fix = nms(det_fix, nms_thresh=nms_thresh, nms_size=5)[0]
-            kps_mov = nms(det_mov, nms_thresh=nms_thresh, nms_size=5)[0]
+            valid_mask = (img1 > 0.05).float(); valid_mask = -F.max_pool2d(-valid_mask, 5, 1, 2)
+            kps_mov = nms(det_mov * valid_mask, nms_thresh=nms_thresh, nms_size=5)[0]
             
-            # Use topk fallback if no points (aligned with v6)
             if len(kps_fix) < 10:
                 flat = det_fix[0,0].view(-1); _, idx = torch.topk(flat, min(100, flat.numel()))
                 kps_fix = torch.stack([idx % 512, idx // 512], dim=1).float()
             if len(kps_mov) < 10:
-                flat = det_mov[0,0].view(-1); _, idx = torch.topk(flat, min(100, flat.numel()))
+                flat = (det_mov*valid_mask)[0,0].view(-1); _, idx = torch.topk(flat, min(100, flat.numel()))
                 kps_mov = torch.stack([idx % 512, idx // 512], dim=1).float()
 
+            # 3. Matching
             d1 = sample_keypoint_desc(kps_fix[None], desc_fix, s=8)[0].permute(1, 0).cpu().numpy()
             d2 = sample_keypoint_desc(kps_mov[None], desc_mov, s=8)[0].permute(1, 0).cpu().numpy()
             matches = cv2.BFMatcher().knnMatch(d1, d2, k=2)
-            good = [m for m, n in matches if m.distance < content_thresh * n.distance]
+            good_matches = [m for m, n in matches if m.distance < content_thresh * n.distance]
             
-            h_f, w_f = img_fix_raw.shape[:2]
-            h_m, w_m = img_mov_raw.shape[:2]
-            mkpts0 = np.array([kps_fix.cpu().numpy()[m.queryIdx] * [w_f/512.0, h_f/512.0] for m in good]) if good else np.array([])
-            mkpts1 = np.array([kps_mov.cpu().numpy()[m.trainIdx] * [w_m/512.0, h_m/512.0] for m in good]) if good else np.array([])
+            # 4. Homography & Scaling
+            h_f, w_f = img_fix_raw.shape[:2]; h_m, w_m = img_mov_raw.shape[:2]
+            kps_f_orig = kps_fix.cpu().numpy() * [w_f/512.0, h_f/512.0]
+            kps_m_orig = kps_mov.cpu().numpy() * [w_m/512.0, h_m/512.0]
             
+            mkpts0 = np.array([kps_f_orig[m.queryIdx] for m in good_matches]) if good_matches else np.array([])
+            mkpts1 = np.array([kps_m_orig[m.trainIdx] for m in good_matches]) if good_matches else np.array([])
+            
+            img_mov_resized = cv2.resize(img_mov_raw, (w_f, h_f))
             if (h_m, w_m) != (h_f, w_f):
                 sc = [w_f/w_m, h_f/h_m]
                 if len(mkpts1) > 0: mkpts1 *= sc
                 if len(pts_mov_gt) > 0: pts_mov_gt = pts_mov_gt * sc
+                kps_m_orig *= sc
             
             H_gt, _ = cv2.findHomography(pts_mov_gt, pts_fix_gt, cv2.RANSAC, 5.0) if len(pts_mov_gt)>=4 else (None, None)
             H_pred, _ = cv2.findHomography(mkpts1, mkpts0, cv2.RANSAC, geometric_thresh) if len(mkpts0)>=4 else (None, None)
             H_est = H_pred if H_pred is not None else np.eye(3)
             mace = compute_corner_error(H_est, H_gt, h_f, w_f) if H_gt is not None else float('inf')
 
-            # Metric Calculation Aligned with Paper
+            # Metric Aligned
             orig_size_ref = (2912, 2912)
             sc_f = [orig_size_ref[1] / 512.0, orig_size_ref[0] / 512.0]
-            mkpts0_p = kps_fix.cpu().numpy()[ [m.queryIdx for m in good] ] * sc_f if good else np.array([])
-            mkpts1_p = kps_mov.cpu().numpy()[ [m.trainIdx for m in good] ] * sc_f if good else np.array([])
+            mkpts0_p = kps_fix.cpu().numpy()[ [m.queryIdx for m in good_matches] ] * sc_f if good_matches else np.array([])
+            mkpts1_p = kps_mov.cpu().numpy()[ [m.trainIdx for m in good_matches] ] * sc_f if good_matches else np.array([])
             pts_f_p = pts_fix_gt * [orig_size_ref[1] / w_f, orig_size_ref[0] / h_f]
             pts_m_p = pts_mov_gt * [orig_size_ref[1] / w_m, orig_size_ref[0] / h_m]
-            
             res_paper = calculate_metrics(mkpts0_p, mkpts1_p, pts_f_p, pts_m_p, orig_size=orig_size_ref)
             all_metrics.append({**res_paper, 'MACE': mace})
 
-            # Visualizations
-            img_fix_kpts = cv2.drawKeypoints(img_fix_raw.copy(), [cv2.KeyPoint(pt[0], pt[1], 10) for pt in mkpts0], None, color=(0,255,0))
-            cv2.putText(img_fix_kpts, f"Max:{det_fix.max():.2f} Pts:{len(mkpts0)}", (10,30), 1, 1, (255,0,0), 2)
+            # 5. SAVING (THE MISSING PART)
+            cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_fix.png'), img_fix_raw)
+            cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_moving.png'), img_mov_resized)
+            
+            img_fix_kpts = cv2.drawKeypoints(img_fix_raw.copy(), [cv2.KeyPoint(pt[0], pt[1], 10) for pt in kps_f_orig], None, color=(0,255,0))
+            txt = f"Det Max: {det_fix.max():.4f} Pts: {len(kps_f_orig)}"
+            cv2.putText(img_fix_kpts, txt, (10,30), 1, 1, (255,0,0), 2)
             cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_fix_kpts.png'), img_fix_kpts)
             
-            reg_img = cv2.warpPerspective(cv2.resize(img_mov_raw, (w_f, h_f)), H_est, (w_f, h_f))
+            img_mov_kpts = cv2.drawKeypoints(img_mov_resized.copy(), [cv2.KeyPoint(pt[0], pt[1], 10) for pt in kps_m_orig], None, color=(0,255,0))
+            txt_m = f"Max: {det_mov.max():.4f} Pts: {len(kps_m_orig)}"
+            cv2.putText(img_mov_kpts, txt_m, (10,30), 1, 1, (255,0,0), 2)
+            cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_moving_kpts.png'), img_mov_kpts)
+            
+            reg_img = cv2.warpPerspective(img_mov_resized, H_est, (w_f, h_f))
             cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_result.png'), reg_img)
             cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_checker.png'), compute_checkerboard(img_fix_raw, reg_img))
+            draw_matches(img_fix_raw, kps_f_orig, img_mov_resized, kps_m_orig, good_matches, os.path.join(sample_save_dir, f'{sample_id}_matches.png'))
             
-    # Summary
+            log_f.write(f"ID: {sample_id} | Status: {res_paper['status']:10} | MEE: {res_paper['MEE']:.2f} | MACE: {mace:.2f} px\n")
+            
     all_errors = [e for m in all_metrics for e in m['errors']]
     auc5 = compute_auc(all_errors, 5); auc10 = compute_auc(all_errors, 10); auc20 = compute_auc(all_errors, 20)
     avg_auc = (auc5 + auc10 + auc20) / 3.0
     acc_rate = np.mean([m['is_acceptable'] for m in all_metrics])
     
-    log_f.write(f"\n--- Validation Epoch {epoch} ---\n")
-    log_f.write(f"Acceptable: {acc_rate*100:.2f}% | AUC@5: {auc5:.4f} | AUC@10: {auc10:.4f} | AUC@20: {auc20:.4f} | Avg: {avg_auc:.4f}\n")
+    log_f.write(f"\n--- Summary ---\nAcc Rate: {acc_rate*100:.2f}% | Avg AUC: {avg_auc:.4f}\n")
     log_f.close()
     print(f"Val Epoch {epoch} Finished. Avg AUC: {avg_auc:.4f}, Acc: {acc_rate*100:.2f}%")
     return avg_auc
@@ -260,7 +274,7 @@ def train_real_v6():
     with open(config_path) as f: config = yaml.safe_load(f)
     
     parser = argparse.ArgumentParser()
-    parser.add_argument('--name', '-n', type=str, default='v6_real_strict_baseline')
+    parser.add_argument('--name', '-n', type=str, default='v6_real_strict_control')
     parser.add_argument('--mode', '-m', type=str, choices=['cffa', 'cfoct', 'octfa', 'cfocta'], default='cffa')
     parser.add_argument('--epoch', '-e', type=int, default=150)
     parser.add_argument('--batch_size', '-b', type=int, default=4)
@@ -271,8 +285,8 @@ def train_real_v6():
     config['MODEL']['name'] = args.name
     config['DATASET']['registration_type'] = args.mode
     config['MODEL']['shared_encoder'] = False 
-    if args.content_thresh is not None: config['MODEL']['content_thresh'] = args.content_thresh
-    if args.nms_thresh is not None: config['MODEL']['nms_thresh'] = args.nms_thresh
+    if args.content_thresh: config['MODEL']['content_thresh'] = args.content_thresh
+    if args.nms_thresh: config['MODEL']['nms_thresh'] = args.nms_thresh
     
     train_config = {**config['MODEL'], **config['PKE'], **config['DATASET'], **config['VALUE_MAP']}
     save_root = f'./save/{args.mode}/{args.name}'
@@ -283,25 +297,34 @@ def train_real_v6():
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    # Dataset & Loaders
-    if args.mode == 'cffa': base_train = CFFADataset(root_dir='dataset/operation_pre_filtered_cffa', split='train', mode='fa2cf')
-    elif args.mode == 'cfocta': base_train = CFOCTADataset(root_dir='dataset/CF_OCTA_v2_repaired', split='train', mode='cf2octa')
-    # ... other modes ...
+    # 1. 严格加载 Train & Val Set
+    if args.mode == 'cffa':
+        base_train = CFFADataset(root_dir='dataset/operation_pre_filtered_cffa', split='train', mode='fa2cf')
+        base_val = CFFADataset(root_dir='dataset/operation_pre_filtered_cffa', split='val', mode='fa2cf')
+    elif args.mode == 'cfocta':
+        base_train = CFOCTADataset(root_dir='dataset/CF_OCTA_v2_repaired', split='train', mode='cf2octa')
+        base_val = CFOCTADataset(root_dir='dataset/CF_OCTA_v2_repaired', split='val', mode='cf2octa')
+    elif args.mode == 'cfoct':
+        base_train = CFOCTDataset(root_dir='dataset/operation_pre_filtered_cfoct', split='train', mode='cf2oct')
+        base_val = CFOCTDataset(root_dir='dataset/operation_pre_filtered_cfoct', split='val', mode='cf2oct')
+    elif args.mode == 'octfa':
+        base_train = OCTFADataset(root_dir='dataset/operation_pre_filtered_octfa', split='train', mode='fa2oct')
+        base_val = OCTFADataset(root_dir='dataset/operation_pre_filtered_octfa', split='val', mode='fa2oct')
     
     train_loader = DataLoader(RealDataV6Wrapper(base_train), batch_size=args.batch_size, shuffle=True, num_workers=4)
     model = SuperRetinaMultimodal(train_config, device=device)
     optimizer = optim.Adam(model.parameters(), lr=1e-4)
     
-    # Value Map Setup (Aligned with v6)
-    value_map_save_dir = train_config['value_map_save_dir']
-    if os.path.exists(value_map_save_dir): shutil.rmtree(value_map_save_dir)
-    os.makedirs(value_map_save_dir)
-    value_maps_running = {}
+    # Value Map 对齐
+    vmap_dir = train_config['value_map_save_dir']
+    if os.path.exists(vmap_dir): shutil.rmtree(vmap_dir)
+    os.makedirs(vmap_dir)
+    vmap_running = {}
     
     phase0_epochs = train_config.get('warmup_epoch', 50)
     best_auc = -1.0
     
-    log_print(f"Starting V6 Baseline on Real Data: {args.name}")
+    log_print(f"Starting V6 Strategy on Real Data (Strict Align): {args.name}")
 
     for epoch in range(1, args.epoch + 1):
         if epoch <= phase0_epochs:
@@ -309,56 +332,39 @@ def train_real_v6():
             phase_msg = f"Phase 0: Modality Alignment Warmup (Epoch {epoch}/{phase0_epochs})"
         else:
             phase, model.PKE_learn = 3, True
-            phase_msg = f"Phase 1+: Hybrid PKE Registration (Epoch {epoch - phase0_epochs}/{args.epoch - phase0_epochs})"
-            
-        log_print(f'--- {phase_msg} ---')
+            phase_msg = f"Phase 1+: Hybrid PKE Registration (Epoch {epoch-phase0_epochs}/{args.epoch-phase0_epochs})"
         
+        log_print(f'--- {phase_msg} ---')
         model.train()
-        running_det, running_desc, total_samples = 0.0, 0.0, 0
+        r_det, r_desc, t_s = 0.0, 0.0, 0
         
         for step_idx, data in enumerate(tqdm(train_loader, desc=f"Epoch {epoch}")):
-            img0_orig, img1_orig = data['image0'].to(device), (data['image1_origin'] if phase==0 else data['image1']).to(device)
+            img0_orig = data['image0'].to(device); img1_orig = (data['image1_origin'] if phase==0 else data['image1']).to(device)
             img0, img1 = apply_domain_randomization(img0_orig), apply_domain_randomization(img1_orig)
             
             if epoch == 1 and step_idx < 2:
                 save_batch_visualization(img0_orig, img1_orig, img0, img1, save_root, epoch, step_idx+1, args.batch_size)
             
-            seeds = data['vessel_mask0'].to(device)
-            H_0to1 = data['T_0to1'].to(device)
-            names = data['pair_names'][0]
-            
-            # Proper Value Map Loading
-            v_maps = value_map_load(value_map_save_dir, names, torch.ones(img0.size(0), dtype=torch.bool), img0.shape[-2:], value_maps_running).to(device)
+            seeds = data['vessel_mask0'].to(device); H_0to1 = data['T_0to1'].to(device); names = data['pair_names'][0]
+            v_maps = value_map_load(vmap_dir, names, torch.ones(img0.size(0), dtype=torch.bool), img0.shape[-2:], vmap_running).to(device)
             
             optimizer.zero_grad()
-            loss, _, l_det, l_desc, _, _, _, _, _ = model(
-                img0, img1, seeds, v_maps, (torch.arange(img0.size(0)),),
-                phase=phase, vessel_mask=None, H_0to1=H_0to1
-            )
-            loss.backward()
-            optimizer.step()
+            loss, _, l_det, l_desc, _, _, _, _, _ = model(img0, img1, seeds, v_maps, (torch.arange(img0.size(0)),), phase=phase, vessel_mask=None, H_0to1=H_0to1)
+            loss.backward(); optimizer.step()
+            value_map_save(vmap_dir, names, torch.ones(img0.size(0), dtype=torch.bool), v_maps.cpu(), vmap_running)
             
-            # Proper Value Map Saving
-            value_map_save(value_map_save_dir, names, torch.ones(img0.size(0), dtype=torch.bool), v_maps.cpu(), value_maps_running)
+            r_det += l_det; r_desc += l_desc; t_s += img0.size(0)
             
-            running_det += l_det; running_desc += l_desc; total_samples += img0.size(0)
-            
-        epoch_loss = (running_det + running_desc) / total_samples
-        log_print(f'Train Total Loss: {epoch_loss:.4f} (Det: {running_det/total_samples:.4f}, Desc: {running_desc/total_samples:.4f})')
-            
+        log_print(f'Train Loss: {(r_det+r_desc)/t_s:.4f} (Det: {r_det/t_s:.4f}, Desc: {r_desc/t_s:.4f})')
+        
         if epoch % 5 == 0:
-            auc = validate(model, base_train, device, epoch, save_root, train_config, args.mode) # Using base_train as placeholder for simplicity
-            
-            state = {'net': model.state_dict(), 'optimizer': optimizer.state_dict(), 'epoch': epoch, 'auc_score': auc}
-            latest_path = os.path.join(save_root, 'latestpoint')
-            os.makedirs(latest_path, exist_ok=True)
-            torch.save(state, os.path.join(latest_path, 'checkpoint.pth'))
-            
+            auc = validate(model, base_val, device, epoch, save_root, train_config, args.mode)
+            state = {'net': model.state_dict(), 'epoch': epoch, 'auc_score': auc}
+            torch.save(state, os.path.join(save_root, 'latestpoint', 'checkpoint.pth')) if os.makedirs(os.path.join(save_root, 'latestpoint'), exist_ok=True) else torch.save(state, os.path.join(save_root, 'latestpoint', 'checkpoint.pth'))
             if auc > best_auc:
                 best_auc = auc
-                best_path = os.path.join(save_root, 'bestcheckpoint')
-                os.makedirs(best_path, exist_ok=True)
-                torch.save(state, os.path.join(best_path, 'checkpoint.pth'))
+                os.makedirs(os.path.join(save_root, 'bestcheckpoint'), exist_ok=True)
+                torch.save(state, os.path.join(save_root, 'bestcheckpoint', 'checkpoint.pth'))
                 log_print(f"New Best AUC: {auc:.4f}")
 
 if __name__ == '__main__':
