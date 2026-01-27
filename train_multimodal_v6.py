@@ -500,32 +500,29 @@ def train_multimodal():
     # Let's fix the init variables first.
     
     # Wait, replace_file_content replaces a CONTIGUOUS block. 
-    # The variable init and the saving logic (at end of loop) are far apart.
-    # I should do this in two steps or use MultiReplace (available).
-    # I will use replace_file_content for the Init first.
+    # ==========================================
+    # v6.2: 课程学习阶段设置
+    # ==========================================
+    phase0_epochs = 30  # 前 30 个 epoch 专门用于特征空间对齐
     
-    # Actually, I'll use MultiReplaceFileContent to do both at once if possible, or just two calls.
-    # Let's use two calls to be safe and simple.
-    
-    # First call: Variable Init.
-
-
     # 初始验证
     log_print("Running initial validation...")
     _ = validate(model, val_set, device, 0, save_root, log_file, train_config, reg_type)
 
-    # v6: 全程启用 GT-Init PKE
-    pke_start_epoch = 0 
-    
     # 训练循环
     for epoch in range(1, num_epochs + 1):
-        # v6: 统一进入自监督+GT引导模式
-        phase = 3 
-        pke_supervised = False 
-        model.PKE_learn = True
-        phase_name = "v6: Dual-Path PKE + GT Anchor + Mask Constraint"
+        if epoch <= phase0_epochs:
+            phase = 0
+            pke_supervised = False
+            model.PKE_learn = False # Phase 0 不进行 PKE 扩充
+            phase_name = f"Phase 0: Modality Alignment Warmup (Epoch {epoch}/{phase0_epochs})"
+        else:
+            phase = 3 
+            pke_supervised = False 
+            model.PKE_learn = True
+            phase_name = f"Phase 1+: Hybrid PKE Registration (Epoch {epoch}/{num_epochs})"
             
-        log_print(f'Epoch {epoch}/{num_epochs} | {phase_name}')
+        log_print(f'--- {phase_name} ---')
         model.train()
             
         running_loss_det = 0.0
@@ -534,13 +531,19 @@ def train_multimodal():
         
         for step_idx, data in enumerate(tqdm(train_loader, desc=f"Train Epoch {epoch}")):
             img0_orig = data['image0'].to(device)
-            img1_orig = data['image1'].to(device)
             
-            # 域随机化
+            # v6.2: 根据阶段选择 Moving 图像源
+            if phase == 0:
+                # Phase 0 使用解剖完全对齐的原始图副本
+                img1_orig = data['image1_origin'].to(device)
+            else:
+                # Phase 1+ 使用带有随机仿射变换的图
+                img1_orig = data['image1'].to(device)
+            
+            # 域随机化 (保持两边独立增强)
             img0 = apply_domain_randomization(img0_orig)
             img1 = apply_domain_randomization(img1_orig)
             
-            # v6: 移除反色 (No Inversion), 直接使用原始强度
             img0_input = img0
             
             # ===== 可视化: 保存第一个 epoch 的前两个 batch =====
@@ -574,9 +577,9 @@ def train_multimodal():
                         keypoints = (mask_np > 127).astype(np.float32)
                         print("点位提取失败")
                 
-                # 调试: 检查点位数量 (打印前两个 batch 的采样情况)
-                if step_idx < 2:
-                    print(f"Sample {b}: Found {np.sum(keypoints)} vessel keypoints")
+                # 调试: 检查点位数量
+                # if epoch == 1 and step_idx < 5:
+                #     print(f"Sample {b}: Found {np.sum(keypoints)} vessel keypoints")
                     
                 vessel_keypoints_batch.append(torch.from_numpy(keypoints).float())
 
