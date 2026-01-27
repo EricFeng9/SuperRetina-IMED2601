@@ -461,6 +461,17 @@ class SuperRetinaMultimodal(nn.Module):
                 loss_suppress = (suppress_fix + suppress_mov) * 0.2
                 
             loss_detector = loss_detector + loss_suppress
+
+            # --- Explicit Supervision for Moving Branch (v6.2 Fix) ---
+            # 解决 Moving 分支因缺乏直接监督而导致的坍缩问题
+            if enhanced_label is not None:
+                # enhanced_label 是 Fix 空间的 PKE 增强标签
+                # 使用 grid_mov_to_fix (Mov -> Fix) 将其采样到 Moving 空间
+                label_mov_target = F.grid_sample(enhanced_label, grid_mov_to_fix[learn_index], mode='nearest', align_corners=True)
+                
+                # 对 Moving 预测图通过 Dice Loss 进行强监督
+                loss_det_mov = self.dice(detector_pred_mov[learn_index], label_mov_target)
+                loss_detector = loss_detector + loss_det_mov
             
             return loss_detector + loss_descriptor, 0, loss_detector.detach().sum(), \
                    loss_descriptor.detach().sum(), enhanced_label_pts, \
