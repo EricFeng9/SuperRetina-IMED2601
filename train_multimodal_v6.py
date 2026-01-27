@@ -361,8 +361,8 @@ def validate(model, val_dataset, device, epoch, save_dir, log_file, train_config
     log_f.write(f"Max Registration Error (Average):   {summary['max_error']:.2f} px\n")
     log_f.close()
     
-    print(f'Validation Epoch {epoch} Finished. AUC@10: {auc_10:.4f}, MACE: {summary["mean_error"]:.2f} px')
-    return auc_10
+    print(f'Validation Epoch {epoch} Finished. MACE: {summary["mean_error"]:.2f} px')
+    return summary["mean_error"]
 
 def train_multimodal():
     """
@@ -477,13 +477,13 @@ def train_multimodal():
         
     value_maps_running = {} if not is_value_map_save else None
     
-    # 最佳指标追踪 (AUC@10 越大越好)
-    best_auc = 0.0
+    # 最佳指标追踪 (MACE 越小越好)
+    best_mace = float('inf')
     
     # 早停机制变量 (仅在epoch >= 100后启用)
     patience = 5  # 验证指标连续5次不提升则早停
     patience_counter = 0
-    best_val_auc = 0.0
+    best_val_mace = float('inf')
 
     # 初始验证
     log_print("Running initial validation...")
@@ -631,13 +631,13 @@ def train_multimodal():
         
         # 每 5 个 Epoch 进行一次验证并保存模型
         if epoch % 5 == 0:
-            auc_test = validate(model, val_set, device, epoch, save_root, log_file, train_config, reg_type)
+            mace_test = validate(model, val_set, device, epoch, save_root, log_file, train_config, reg_type)
             
             state = {
                 'net': model.state_dict(),
                 'optimizer': optimizer.state_dict(),
                 'epoch': epoch,
-                'auc': auc_test
+                'mace': mace_test
             }
             
             # 保存最新模型
@@ -646,31 +646,31 @@ def train_multimodal():
             torch.save(state, os.path.join(latest_dir, 'checkpoint.pth'))
             # 保存epoch信息
             with open(os.path.join(latest_dir, 'checkpoint_info.txt'), 'w') as f:
-                f.write(f'Latest Checkpoint\nEpoch: {epoch}\nAUC@10: {auc_test:.4f}\n')
+                f.write(f'Latest Checkpoint\nEpoch: {epoch}\nMACE: {mace_test:.2f} px\n')
             
-            # 保存 AUC 表现最好的模型 (越大越好)
-            if auc_test > best_auc:
-                log_print(f"New Best AUC: {auc_test:.4f} (Previous: {best_auc:.4f})")
-                best_auc = auc_test
+            # 保存 MACE 表现最好的模型 (越小越好)
+            if mace_test < best_mace:
+                log_print(f"New Best MACE: {mace_test:.2f} (Previous: {best_mace:.2f})")
+                best_mace = mace_test
                 best_dir = os.path.join(save_root, 'bestcheckpoint')
                 os.makedirs(best_dir, exist_ok=True)
                 torch.save(state, os.path.join(best_dir, 'checkpoint.pth'))
                 # 保存epoch信息
                 with open(os.path.join(best_dir, 'checkpoint_info.txt'), 'w') as f:
-                    f.write(f'Best Checkpoint\nEpoch: {epoch}\nAUC@10: {auc_test:.4f}\n')
+                    f.write(f'Best Checkpoint\nEpoch: {epoch}\nMACE: {mace_test:.2f} px\n')
             
             # 早停机制 (仅在 epoch >= 100 后启用)
             if epoch >= 100:
-                if auc_test > best_val_auc:
-                    best_val_auc = auc_test
+                if mace_test < best_val_mace:
+                    best_val_mace = mace_test
                     patience_counter = 0
-                    log_print(f'[Early Stopping] Validation AUC improved to {best_val_auc:.4f}. Reset patience counter.')
+                    log_print(f'[Early Stopping] Validation MACE improved to {best_val_mace:.2f}. Reset patience counter.')
                 else:
                     patience_counter += 1
-                    log_print(f'[Early Stopping] Validation AUC did not improve. Patience: {patience_counter}/{patience}')
+                    log_print(f'[Early Stopping] Validation MACE did not improve. Patience: {patience_counter}/{patience}')
                 
                 if patience_counter >= patience:
-                    log_print(f'Early stopping triggered at epoch {epoch}. Best validation AUC: {best_val_auc:.4f}')
+                    log_print(f'Early stopping triggered at epoch {epoch}. Best validation MACE: {best_val_mace:.2f}')
                     break
     
     # 训练结束，关闭日志文件
