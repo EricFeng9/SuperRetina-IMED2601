@@ -304,8 +304,13 @@ def train_real_v6():
     log_print(f"Starting V6 Baseline on Real Data: {args.name}")
 
     for epoch in range(1, args.epoch + 1):
-        phase, model.PKE_learn = (0, False) if epoch <= phase0_epochs else (3, True)
-        phase_msg = f"Phase {0 if phase==0 else 1}+ (E{epoch}/{args.epoch})"
+        if epoch <= phase0_epochs:
+            phase, model.PKE_learn = 0, False
+            phase_msg = f"Phase 0: Modality Alignment Warmup (Epoch {epoch}/{phase0_epochs})"
+        else:
+            phase, model.PKE_learn = 3, True
+            phase_msg = f"Phase 1+: Hybrid PKE Registration (Epoch {epoch - phase0_epochs}/{args.epoch - phase0_epochs})"
+            
         log_print(f'--- {phase_msg} ---')
         
         model.train()
