@@ -540,29 +540,17 @@ def train_multimodal():
     patience_counter = 0
     best_val_mace = float('inf')
 
-    # 初始验证
-    log_print("Running initial validation...")
-    _ = validate(model, val_set, device, 0, save_root, log_file, train_config, reg_type)
-
-    # v6: 全程启用 GT-Init PKE
-    pke_start_epoch = 0 
-    
-    # ... (the for loop starts here)
-    # I'll rely on chunk matching. I am replacing the variable init part.
-    # And then I need to update the save logic inside the loop.
-    # It is safer to update the VARIABLE INIT here, and then update the LOOP BODY in a separate call or same call if contiguous.
-    # They are separated by `for epoch in range...` which is large.
-    # Let's fix the init variables first.
-    
-    # Wait, replace_file_content replaces a CONTIGUOUS block. 
     # ==========================================
     # v6.2: 课程学习阶段设置
     # ==========================================
     phase0_epochs = 30  # 前 30 个 epoch 专门用于特征空间对齐
     
-    # 初始验证
-    log_print("Running initial validation...")
-    _ = validate(model, val_set, device, 0, save_root, log_file, train_config, reg_type)
+    # 初始验证 (仅从 Epoch 1 开始时执行)
+    if start_epoch == 1:
+        log_print("Running initial validation...")
+        _ = validate(model, val_set, device, 0, save_root, log_file, train_config, reg_type)
+    else:
+        log_print(f"Resuming: Skipping initial validation (Current Epoch: {start_epoch})")
 
     # 训练循环
     for epoch in range(start_epoch, num_epochs + 1):
