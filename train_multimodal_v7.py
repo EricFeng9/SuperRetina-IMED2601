@@ -567,19 +567,29 @@ def train_multimodal():
         pretrained_dict = checkpoint['net']
         model_dict = model.state_dict()
         
-        # 权重映射: 将单路 encoder 映射到双路，并加载其余共享头
+        # 权重映射: 官方权重中编码器层可能在顶层 (conv1a, conv1b, ...) 或在 encoder. 命名空间下
         new_dict = {}
+        # 编码器特有的层名前缀
+        encoder_layer_prefixes = ['conv1a', 'conv1b', 'conv2a', 'conv2b', 'conv3a', 'conv3b', 'conv4a', 'conv4b']
+        
         for k, v in pretrained_dict.items():
+            # 情况 1: 键名以 "encoder." 开头
             if k.startswith('encoder.'):
                 new_dict[k.replace('encoder.', 'encoder_fix.')] = v
                 new_dict[k.replace('encoder.', 'encoder_mov.')] = v
+            # 情况 2: 键名直接是编码器层名 (conv1a.weight 等)
+            elif any(k.startswith(prefix + '.') for prefix in encoder_layer_prefixes):
+                new_dict['encoder_fix.' + k] = v
+                new_dict['encoder_mov.' + k] = v
+            # 情况 3: 共享头层名 (convDa, dconv_up3 等)
             else:
-                new_dict[k] = v
+                # 只有当模型确实存在这个键时才添加，避免 "Unexpected key" 错误
+                if k in model_dict:
+                    new_dict[k] = v
         
-        # 更新并加载
-        model_dict.update(new_dict)
-        model.load_state_dict(model_dict)
-        log_print("Successfully mapped and loaded pretrained weights.")
+        # 使用 strict=False 加载，以防某些层微调过或结构有细微差异
+        model.load_state_dict(new_dict, strict=False)
+        log_print("Successfully mapped and loaded pretrained weights (Strict=False).")
         
     # 再次使用配置文件里的 pretrained_path
     elif train_config['load_pre_trained_model']:
