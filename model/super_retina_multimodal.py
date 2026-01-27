@@ -401,8 +401,13 @@ class SuperRetinaMultimodal(nn.Module):
                 grid_list_m2f = []
                 # Mov 图像尺寸也是 H, W
                 # 计算逆矩阵 H_1to0
+                # 计算逆矩阵 H_1to0
                 try:
-                    H_1to0 = torch.linalg.inv(H_0to1)
+                    # FIX: Move to CPU for inversion to avoid "magma_queue_create_from_cuda_internal" assertion failure
+                    # This is a known issue with torch.linalg.inv on GPU for some matrix conditions
+                    H_0to1_cpu = H_0to1.detach().cpu()
+                    H_1to0_cpu = torch.linalg.inv(H_0to1_cpu)
+                    H_1to0 = H_1to0_cpu.to(fix_img.device)
                 except:
                     # 兜底：如果不可逆，使用单位阵
                     H_1to0 = torch.eye(3, device=fix_img.device).unsqueeze(0).repeat(B, 1, 1)
