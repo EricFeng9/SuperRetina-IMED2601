@@ -235,11 +235,17 @@ def train_real_v6():
     parser.add_argument('--mode', '-m', type=str, choices=['cffa', 'cfoct', 'octfa', 'cfocta'], default='cffa')
     parser.add_argument('--epoch', '-e', type=int, default=150)
     parser.add_argument('--batch_size', '-b', type=int, default=4)
+    parser.add_argument('--content_thresh', type=float, default=None)
+    parser.add_argument('--nms_thresh', type=float, default=None)
     args = parser.parse_args()
     
     config['MODEL']['name'] = args.name
     config['DATASET']['registration_type'] = args.mode
     config['MODEL']['shared_encoder'] = False # Dual-Path
+
+    # Override config values if provided via command line
+    if args.content_thresh is not None: config['MODEL']['content_thresh'] = args.content_thresh
+    if args.nms_thresh is not None: config['MODEL']['nms_thresh'] = args.nms_thresh
     
     train_config = {**config['MODEL'], **config['PKE'], **config['DATASET'], **config['VALUE_MAP']}
     save_root = f'./save/{args.mode}/{args.name}'
