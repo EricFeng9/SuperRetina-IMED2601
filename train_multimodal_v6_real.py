@@ -155,6 +155,7 @@ def validate(model, val_dataset, device, epoch, save_root, train_config, mode):
     all_metrics = []
     log_file = os.path.join(save_root, 'validation_log.txt')
     log_f = open(log_file, 'a')
+    log_f.write(f'\n--- Validation Epoch {epoch} ---\n')
     
     nms_thresh = train_config.get('nms_thresh', 0.01)
     content_thresh = train_config.get('content_thresh', 0.8)
@@ -253,16 +254,39 @@ def validate(model, val_dataset, device, epoch, save_root, train_config, mode):
             cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_checker.png'), compute_checkerboard(img_fix_raw, reg_img))
             draw_matches(img_fix_raw, kps_f_orig, img_mov_resized, kps_m_orig, good_matches, os.path.join(sample_save_dir, f'{sample_id}_matches.png'))
             
-            log_f.write(f"ID: {sample_id} | Status: {res_paper['status']:10} | MEE: {res_paper['MEE']:.2f} | MACE: {mace:.2f} px\n")
+            log_f.write(f"ID: {sample_id} | Status: {res_paper['status']:10} | "
+                       f"MEE: {res_paper['MEE']:.2f} | MAE: {res_paper['MAE']:.2f} | "
+                       f"MACE: {mace:.2f} px\n")
             
-    all_errors = [e for m in all_metrics for e in m['errors']]
-    auc5 = compute_auc(all_errors, 5); auc10 = compute_auc(all_errors, 10); auc20 = compute_auc(all_errors, 20)
-    avg_auc = (auc5 + auc10 + auc20) / 3.0
-    acc_rate = np.mean([m['is_acceptable'] for m in all_metrics])
+    # 计算 mAUC
+    all_errors = []
+    for m in all_metrics:
+        if m['errors']: all_errors.extend(m['errors'])
     
-    log_f.write(f"\n--- Summary ---\nAcc Rate: {acc_rate*100:.2f}% | Avg AUC: {avg_auc:.4f}\n")
+    auc5 = compute_auc(all_errors, max_threshold=5)
+    auc10 = compute_auc(all_errors, max_threshold=10)
+    auc20 = compute_auc(all_errors, max_threshold=20)
+    avg_auc = (auc5 + auc10 + auc20) / 3.0
+
+    # 计算平均指标
+    summary = {
+        'Acceptable_Rate': np.mean([m['is_acceptable'] for m in all_metrics]),
+        'Inaccurate_Rate': np.mean([m['is_inaccurate'] for m in all_metrics]),
+        'Failed_Rate': np.mean([m['is_failed'] for m in all_metrics]),
+        'Avg_MACE': np.mean([m['MACE'] for m in all_metrics if m['MACE'] != float('inf')])
+    }
+    
+    log_f.write(f"\n--- Validation Summary (SuperRetina Paper Aligned) ---\n")
+    log_f.write(f"Acceptable Rate: {summary['Acceptable_Rate']*100:.2f}%\n")
+    log_f.write(f"Inaccurate Rate: {summary['Inaccurate_Rate']*100:.2f}%\n")
+    log_f.write(f"Failed Rate:     {summary['Failed_Rate']*100:.2f}%\n")
+    log_f.write(f"AUC@5:           {auc5:.4f}\n")
+    log_f.write(f"AUC@10:          {auc10:.4f}\n")
+    log_f.write(f"AUC@20:          {auc20:.4f}\n")
+    log_f.write(f"Avg AUC@5-20:    {avg_auc:.4f}\n")
+    log_f.write(f"Overall MACE:    {summary['Avg_MACE']:.2f} px\n")
     log_f.close()
-    print(f"Val Epoch {epoch} Finished. Avg AUC: {avg_auc:.4f}, Acc: {acc_rate*100:.2f}%")
+    print(f'Validation Epoch {epoch} Finished. Avg AUC@5-20: {avg_auc:.4f}, Acc Rate: {summary["Acceptable_Rate"]*100:.2f}%')
     return avg_auc
 
 # ============================================================================
@@ -293,9 +317,18 @@ def train_real_v6():
     os.makedirs(save_root, exist_ok=True)
     
     log_file_train = os.path.join(save_root, 'train_log.txt')
-    log_print = lambda msg: print(msg) or open(log_file_train, 'a').write(msg + '\n')
-    
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
+    # 打开训练日志文件
+    train_log = open(log_file_train, 'a', buffering=1)  # 行缓冲，实时写入
+    
+    def log_print(msg):
+        """同时输出到控制台和日志文件"""
+        print(msg)
+        train_log.write(msg + '\n')
+        train_log.flush()
+    
+    log_print(f"Using device: {device} | Experiment: {args.name}")
     
     # 1. 严格加载 Train & Val Set
     if args.mode == 'cffa':
@@ -324,7 +357,16 @@ def train_real_v6():
     phase0_epochs = train_config.get('warmup_epoch', 50)
     best_auc = -1.0
     
+    # 早停机制变量 (仅在 epoch >= 100 后启用)
+    patience = 5  # 验证指标连续 5 次不提升则早停
+    patience_counter = 0
+    best_val_score = -1.0
+    
     log_print(f"Starting V6 Strategy on Real Data (Strict Align): {args.name}")
+
+    # 初始验证
+    log_print("Running initial validation...")
+    _ = validate(model, base_val, device, 0, save_root, train_config, args.mode)
 
     for epoch in range(1, args.epoch + 1):
         if epoch <= phase0_epochs:
@@ -355,7 +397,7 @@ def train_real_v6():
             
             r_det += l_det; r_desc += l_desc; t_s += img0.size(0)
             
-        log_print(f'Train Loss: {(r_det+r_desc)/t_s:.4f} (Det: {r_det/t_s:.4f}, Desc: {r_desc/t_s:.4f})')
+        log_print(f'Train Total Loss: {(r_det+r_desc)/t_s:.4f} (Det: {r_det/t_s:.4f}, Desc: {r_desc/t_s:.4f})')
         
         if epoch % 5 == 0:
             auc = validate(model, base_val, device, epoch, save_root, train_config, args.mode)
@@ -366,6 +408,23 @@ def train_real_v6():
                 os.makedirs(os.path.join(save_root, 'bestcheckpoint'), exist_ok=True)
                 torch.save(state, os.path.join(save_root, 'bestcheckpoint', 'checkpoint.pth'))
                 log_print(f"New Best AUC: {auc:.4f}")
+
+            # 早停机制 (仅在 epoch >= 100 后启用)
+            if epoch >= 100:
+                if auc > best_val_score:
+                    best_val_score = auc
+                    patience_counter = 0
+                    log_print(f'[Early Stopping] Validation AUC improved to {best_val_score:.4f}. Reset patience counter.')
+                else:
+                    patience_counter += 1
+                    log_print(f'[Early Stopping] Validation AUC did not improve. Patience: {patience_counter}/{patience}')
+                
+                if patience_counter >= patience:
+                    log_print(f'Early stopping triggered at epoch {epoch}. Best validation AUC: {best_val_score:.4f}')
+                    break
+
+    # 训练结束，关闭日志文件
+    train_log.close()
 
 if __name__ == '__main__':
     train_real_v6()
