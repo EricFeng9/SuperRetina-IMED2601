@@ -222,7 +222,7 @@ class SuperRetinaMultimodal(nn.Module):
         negatives_hard = []
         negatives_random = []
         anchor = []
-        D = descriptor_pred.shape[1]
+        D = descriptor_pred_map.shape[1]
         
         for i in range(len(affine_descriptors)):
             if affine_descriptors[i].shape[1] == 0:
@@ -232,7 +232,7 @@ class SuperRetinaMultimodal(nn.Module):
 
             n = affine_descriptors[i].shape[1]
             if n > 1000:  # 防止显存溢出
-                return torch.tensor(0., requires_grad=True).to(descriptor_pred), False
+                return torch.tensor(0., requires_grad=True).to(detector_pred_samp), False
 
             descriptor = descriptor.view(D, -1, 1)
             affine_descriptor = affine_descriptor.view(D, 1, -1)
@@ -262,7 +262,7 @@ class SuperRetinaMultimodal(nn.Module):
             negatives_random.append(affine_descriptor[:, 0, neg_index2.long(), ].permute(1, 0))
 
         if len(positive) == 0:
-            return torch.tensor(0., requires_grad=True).to(descriptor_pred), False
+            return torch.tensor(0., requires_grad=True).to(detector_pred_samp), False
 
         # 拼接所有样本并进行三元组损失计算
         positive = torch.cat(positive)
