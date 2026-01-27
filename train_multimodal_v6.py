@@ -189,6 +189,8 @@ def validate(model, val_dataset, device, epoch, save_dir, log_file, train_config
                 img_mov_gray = img_mov_raw
             
             sample_id = os.path.basename(path_fix).split('.')[0]
+            sample_save_dir = os.path.join(epoch_save_dir, sample_id)
+            os.makedirs(sample_save_dir, exist_ok=True)
             
             # 准备模型输入
             img0_tensor = transform(img_fix_gray).unsqueeze(0).to(device)
@@ -314,8 +316,7 @@ def validate(model, val_dataset, device, epoch, save_dir, log_file, train_config
                        f"MACE: {metrics['mean_error']:.2f} px\n")
             
             # 保存可视化结果
-            sample_save_dir = os.path.join(epoch_save_dir, sample_id)
-            os.makedirs(sample_save_dir, exist_ok=True)
+            # (sample_save_dir 已在循环开始处定义并创建)
             
             # 保存原始图像（moving 使用统一尺寸后的版本）
             cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_fix.png'), img_fix_raw)
