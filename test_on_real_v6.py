@@ -131,14 +131,19 @@ def test_on_real():
         test_set = OCTFADataset(root_dir='dataset/operation_pre_filtered_octfa', split=args.split, mode='fa2oct')
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    log_print(f"Using device: {device}")
+
     # v6 model needs shared_encoder=False for Dual-Path
     train_config['shared_encoder'] = False
+    log_print("Initializing model...")
     model = SuperRetinaMultimodal(train_config, device=device)
     
     if os.path.exists(checkpoint_path):
         log_print(f"Loading checkpoint from {checkpoint_path}")
         checkpoint = torch.load(checkpoint_path, map_location=device)
+        log_print("Applying state_dict...")
         model.load_state_dict(checkpoint['net'])
+        log_print("Model loaded successfully.")
     else:
         log_print(f"WARNING: Checkpoint NOT found at {checkpoint_path}!")
         
@@ -156,6 +161,7 @@ def test_on_real():
 
     with torch.no_grad():
         for i in tqdm(range(len(test_set)), desc="Evaluating"):
+            log_print(f"DEBUG: Processing sample {i+1}/{len(test_set)}")
             raw_data = test_set.get_raw_sample(i)
             
             if mode == 'cfocta': # (cf, octa, pts_cf, pts_octa, path_cf, path_octa)
