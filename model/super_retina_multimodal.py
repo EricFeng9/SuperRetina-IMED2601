@@ -315,9 +315,9 @@ class SuperRetinaMultimodal(nn.Module):
             idx = torch.cat([idx_v, idx_r])
             
             # 3. 构造正负样本对
-            # Anchor 来自 Fix (被 Detach), Positive 来自 Moving (带梯度)
-            anchor = F.normalize(feat_fix[idx].detach(), dim=-1) # [N, C]
-            positive = F.normalize(feat_mov[idx], dim=-1)         # [N, C]
+            # 让双路同时训练，共同构建高区分度的跨模态特征空间
+            anchor = F.normalize(feat_fix[idx], dim=-1)   # [N, C] (CF 特征)
+            positive = F.normalize(feat_mov[idx], dim=-1) # [N, C] (FA/OCTA 特征)
             
             # 负样本池: 使用当前图内所有的 Moving 特征 (或者更高效地只用当前图的特征)
             # 为了极端效率，我们只用当前图的特征作为负样本库

@@ -1,74 +1,36 @@
-Using device: cuda:0 | Experiment: 260127_2_v6
+Using device: cuda:0 | Experiment: 260127_3_v6
 Running initial validation...
 Running initial validation...
-Epoch 1/500 | v6: Dual-Path PKE + GT Anchor + Mask Constraint
-Train Total Loss: 3.0694 (Det: 0.2224, Desc: 2.8470)
-Epoch 2/500 | v6: Dual-Path PKE + GT Anchor + Mask Constraint
-Train Total Loss: 3.0143 (Det: 0.2044, Desc: 2.8098)
-Epoch 3/500 | v6: Dual-Path PKE + GT Anchor + Mask Constraint
-Train Total Loss: 3.0106 (Det: 0.2016, Desc: 2.8090)
-Epoch 4/500 | v6: Dual-Path PKE + GT Anchor + Mask Constraint
-Train Total Loss: 2.9938 (Det: 0.2017, Desc: 2.7922)
-Epoch 5/500 | v6: Dual-Path PKE + GT Anchor + Mask Constraint
-Train Total Loss: 2.9684 (Det: 0.1997, Desc: 2.7688)
-Epoch 6/500 | v6: Dual-Path PKE + GT Anchor + Mask Constraint
-Train Total Loss: 2.9315 (Det: 0.1977, Desc: 2.7337)
-Epoch 7/500 | v6: Dual-Path PKE + GT Anchor + Mask Constraint
-Train Total Loss: 2.9170 (Det: 0.1977, Desc: 2.7193)
-Epoch 8/500 | v6: Dual-Path PKE + GT Anchor + Mask Constraint
-Train Total Loss: 2.9166 (Det: 0.1978, Desc: 2.7188)
-Epoch 9/500 | v6: Dual-Path PKE + GT Anchor + Mask Constraint
-Train Total Loss: 2.9080 (Det: 0.1969, Desc: 2.7111)
-Epoch 10/500 | v6: Dual-Path PKE + GT Anchor + Mask Constraint
-Train Total Loss: 2.9009 (Det: 0.1962, Desc: 2.7047)
-Epoch 11/500 | v6: Dual-Path PKE + GT Anchor + Mask Constraint
-Train Total Loss: 2.8898 (Det: 0.1959, Desc: 2.6939)
-Epoch 12/500 | v6: Dual-Path PKE + GT Anchor + Mask Constraint
-Train Total Loss: 2.8683 (Det: 0.1963, Desc: 2.6720)
-Epoch 13/500 | v6: Dual-Path PKE + GT Anchor + Mask Constraint
-Train Total Loss: 2.8439 (Det: 0.1958, Desc: 2.6481)
-Epoch 14/500 | v6: Dual-Path PKE + GT Anchor + Mask Constraint
-Train Total Loss: 2.8359 (Det: 0.1954, Desc: 2.6405)
-Epoch 15/500 | v6: Dual-Path PKE + GT Anchor + Mask Constraint
-Train Total Loss: 2.8129 (Det: 0.1946, Desc: 2.6184)
-Epoch 16/500 | v6: Dual-Path PKE + GT Anchor + Mask Constraint
-Train Total Loss: 2.7901 (Det: 0.1943, Desc: 2.5958)
-Epoch 17/500 | v6: Dual-Path PKE + GT Anchor + Mask Constraint
-Train Total Loss: 2.7696 (Det: 0.1944, Desc: 2.5752)
-Epoch 18/500 | v6: Dual-Path PKE + GT Anchor + Mask Constraint
-Train Total Loss: 2.7478 (Det: 0.1939, Desc: 2.5539)
-Epoch 19/500 | v6: Dual-Path PKE + GT Anchor + Mask Constraint
-Train Total Loss: 2.7050 (Det: 0.1921, Desc: 2.5129)
-Epoch 20/500 | v6: Dual-Path PKE + GT Anchor + Mask Constraint
-Train Total Loss: 2.6670 (Det: 0.1914, Desc: 2.4756)
-Epoch 21/500 | v6: Dual-Path PKE + GT Anchor + Mask Constraint
-Train Total Loss: 2.6359 (Det: 0.1897, Desc: 2.4461)
-Epoch 22/500 | v6: Dual-Path PKE + GT Anchor + Mask Constraint
-Train Total Loss: 2.5962 (Det: 0.1881, Desc: 2.4081)
-Epoch 23/500 | v6: Dual-Path PKE + GT Anchor + Mask Constraint
-Train Total Loss: 2.5587 (Det: 0.1862, Desc: 2.3725)
-Epoch 24/500 | v6: Dual-Path PKE + GT Anchor + Mask Constraint
-Train Total Loss: 2.5270 (Det: 0.1853, Desc: 2.3417)
-Epoch 25/500 | v6: Dual-Path PKE + GT Anchor + Mask Constraint
-Train Total Loss: 2.4823 (Det: 0.1836, Desc: 2.2986)
-Epoch 26/500 | v6: Dual-Path PKE + GT Anchor + Mask Constraint
-Train Total Loss: 2.4500 (Det: 0.1827, Desc: 2.2673)
-Epoch 27/500 | v6: Dual-Path PKE + GT Anchor + Mask Constraint
-Train Total Loss: 2.4100 (Det: 0.1818, Desc: 2.2282)
-Epoch 28/500 | v6: Dual-Path PKE + GT Anchor + Mask Constraint
-Train Total Loss: 2.3860 (Det: 0.1814, Desc: 2.2046)
-Epoch 29/500 | v6: Dual-Path PKE + GT Anchor + Mask Constraint
-Train Total Loss: 2.3418 (Det: 0.1798, Desc: 2.1620)
-Epoch 30/500 | v6: Dual-Path PKE + GT Anchor + Mask Constraint
-Train Total Loss: 2.3194 (Det: 0.1792, Desc: 2.1403)
-Epoch 31/500 | v6: Dual-Path PKE + GT Anchor + Mask Constraint
-Train Total Loss: 2.2683 (Det: 0.1782, Desc: 2.0901)
-Epoch 32/500 | v6: Dual-Path PKE + GT Anchor + Mask Constraint
-Train Total Loss: 2.2268 (Det: 0.1780, Desc: 2.0488)
-Epoch 33/500 | v6: Dual-Path PKE + GT Anchor + Mask Constraint
-Train Total Loss: 2.2132 (Det: 0.1769, Desc: 2.0363)
-Epoch 34/500 | v6: Dual-Path PKE + GT Anchor + Mask Constraint
-Train Total Loss: 2.1814 (Det: 0.1763, Desc: 2.0051)
-Epoch 35/500 | v6: Dual-Path PKE + GT Anchor + Mask Constraint
-Train Total Loss: 2.1898 (Det: 0.1759, Desc: 2.0140)
-Epoch 36/500 | v6: Dual-Path PKE + GT Anchor + Mask Constraint
+--- Phase 0: Modality Alignment Warmup (Epoch 1/30) ---
+Train Total Loss: 1.7124 (Det: 0.0000, Desc: 1.7124)
+--- Phase 0: Modality Alignment Warmup (Epoch 2/30) ---
+Train Total Loss: 1.7105 (Det: 0.0000, Desc: 1.7105)
+--- Phase 0: Modality Alignment Warmup (Epoch 3/30) ---
+Train Total Loss: 1.7108 (Det: 0.0000, Desc: 1.7108)
+--- Phase 0: Modality Alignment Warmup (Epoch 4/30) ---
+Train Total Loss: 1.7038 (Det: 0.0000, Desc: 1.7038)
+--- Phase 0: Modality Alignment Warmup (Epoch 5/30) ---
+Train Total Loss: 1.7001 (Det: 0.0000, Desc: 1.7001)
+--- Phase 0: Modality Alignment Warmup (Epoch 6/30) ---
+Train Total Loss: 1.7049 (Det: 0.0000, Desc: 1.7049)
+--- Phase 0: Modality Alignment Warmup (Epoch 7/30) ---
+Train Total Loss: 1.7071 (Det: 0.0000, Desc: 1.7071)
+--- Phase 0: Modality Alignment Warmup (Epoch 8/30) ---
+Train Total Loss: 1.7035 (Det: 0.0000, Desc: 1.7035)
+--- Phase 0: Modality Alignment Warmup (Epoch 9/30) ---
+Train Total Loss: 1.7030 (Det: 0.0000, Desc: 1.7030)
+--- Phase 0: Modality Alignment Warmup (Epoch 10/30) ---
+Train Total Loss: 1.7017 (Det: 0.0000, Desc: 1.7017)
+--- Phase 0: Modality Alignment Warmup (Epoch 11/30) ---
+Train Total Loss: 1.7011 (Det: 0.0000, Desc: 1.7011)
+--- Phase 0: Modality Alignment Warmup (Epoch 12/30) ---
+Train Total Loss: 1.6998 (Det: 0.0000, Desc: 1.6998)
+--- Phase 0: Modality Alignment Warmup (Epoch 13/30) ---
+Train Total Loss: 1.6976 (Det: 0.0000, Desc: 1.6976)
+--- Phase 0: Modality Alignment Warmup (Epoch 14/30) ---
+Train Total Loss: 1.6997 (Det: 0.0000, Desc: 1.6997)
+--- Phase 0: Modality Alignment Warmup (Epoch 15/30) ---
+Train Total Loss: 1.6995 (Det: 0.0000, Desc: 1.6995)
+--- Phase 0: Modality Alignment Warmup (Epoch 16/30) ---
+Train Total Loss: 1.6995 (Det: 0.0000, Desc: 1.6995)
+--- Phase 0: Modality Alignment Warmup (Epoch 17/30) ---

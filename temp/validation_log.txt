@@ -1,279 +1,155 @@
 
 --- Validation Epoch 0 ---
-ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0282 | MIR: 0.0484 | MACE: 1009.87 px
-ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0744 | MIR: 0.0415 | MACE: 576.98 px
-ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0858 | MIR: 0.0428 | MACE: 9115.79 px
-ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0495 | MIR: 0.0504 | MACE: 471.48 px
-ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0271 | MIR: 0.0452 | MACE: 1042.11 px
-ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1041 | MIR: 0.0787 | MACE: 781.13 px
-ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0887 | MIR: 0.0526 | MACE: 374.83 px
-ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0612 | MIR: 0.0535 | MACE: 754.36 px
-ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0892 | MIR: 0.0615 | MACE: 307.51 px
-ID: 051_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1109 | MIR: 0.0673 | MACE: 635.68 px
-ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0876 | MIR: 0.0816 | MACE: 634.87 px
-ID: 010_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0860 | MIR: 0.0602 | MACE: 4045.80 px
-ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0759 | MIR: 0.0523 | MACE: 641.34 px
-ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1020 | MIR: 0.0529 | MACE: 426.50 px
-ID: 025_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0570 | MIR: 0.0643 | MACE: 766.89 px
-ID: 026_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0692 | MIR: 0.0462 | MACE: 648.03 px
-ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0791 | MIR: 0.0464 | MACE: 4329.98 px
-ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0056 | MIR: 0.0299 | MACE: 2474.79 px
-ID: 012_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0694 | MIR: 0.0480 | MACE: 636.05 px
-ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0250 | MIR: 0.0541 | MACE: 1048.26 px
+ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0546 | MIR: 0.0657 | MACE: 1082.97 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1385 | MIR: 0.0350 | MACE: 566.24 px
+ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1396 | MIR: 0.0469 | MACE: 730.51 px
+ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0949 | MIR: 0.0534 | MACE: 1352.08 px
+ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0533 | MIR: 0.0341 | MACE: 1033.25 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1536 | MIR: 0.0610 | MACE: 372.55 px
+ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1533 | MIR: 0.0472 | MACE: 634.40 px
+ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1040 | MIR: 0.0275 | MACE: 555.91 px
+ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1564 | MIR: 0.0619 | MACE: 1099.79 px
+ID: 051_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1318 | MIR: 0.0541 | MACE: 2278.52 px
+ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1333 | MIR: 0.0632 | MACE: 860.80 px
+ID: 010_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1417 | MIR: 0.0556 | MACE: 562.51 px
+ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1120 | MIR: 0.0390 | MACE: 1559.15 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1542 | MIR: 0.0429 | MACE: 399.59 px
+ID: 025_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0907 | MIR: 0.0476 | MACE: 1802.90 px
+ID: 026_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0844 | MIR: 0.0545 | MACE: 802.63 px
+ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1266 | MIR: 0.0417 | MACE: 590.30 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0294 | MIR: 0.0390 | MACE: 1546.21 px
+ID: 012_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1316 | MIR: 0.0350 | MACE: 665.18 px
+ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0334 | MIR: 0.0451 | MACE: 969.87 px
 
 --- Validation Summary ---
 Overall SR_ME (Success Rate @5px):  0.00%
 Overall SR_MAE (Success Rate @10px): 0.00%
 AUC@10:                             0.0000
-Average Repeatability:              6.88%
-Average Matching Inliers Ratio:     5.39%
-Overall MACE (Mean Corner Error):   1536.11 px
-Max Registration Error (Average):   535.94 px
+Average Repeatability:              11.09%
+Average Matching Inliers Ratio:     4.75%
+Overall MACE (Mean Corner Error):   973.27 px
+Max Registration Error (Average):   743.07 px
 
 --- Validation Epoch 0 ---
-ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0282 | MIR: 0.0579 | MACE: 1087.95 px
-ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0745 | MIR: 0.0408 | MACE: 738.77 px
-ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0856 | MIR: 0.0376 | MACE: 2882.75 px
-ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0493 | MIR: 0.0451 | MACE: 797.69 px
-ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0270 | MIR: 0.0429 | MACE: 1344.93 px
-ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1032 | MIR: 0.0652 | MACE: 1160.49 px
-ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0868 | MIR: 0.0606 | MACE: 452.21 px
-ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0620 | MIR: 0.0541 | MACE: 1237.06 px
-ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0893 | MIR: 0.0714 | MACE: 612.37 px
-ID: 051_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1145 | MIR: 0.0722 | MACE: 1746.73 px
-ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0872 | MIR: 0.0928 | MACE: 5397.61 px
-ID: 010_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0829 | MIR: 0.0657 | MACE: 1820.80 px
-ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0774 | MIR: 0.0467 | MACE: 518.61 px
-ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1027 | MIR: 0.0588 | MACE: 587.60 px
-ID: 025_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0597 | MIR: 0.0690 | MACE: 4728.64 px
-ID: 026_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0687 | MIR: 0.0438 | MACE: 2631.86 px
-ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0785 | MIR: 0.0458 | MACE: 575.91 px
-ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0055 | MIR: 0.0407 | MACE: 871.40 px
-ID: 012_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0702 | MIR: 0.0476 | MACE: 576.50 px
-ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0248 | MIR: 0.0567 | MACE: 1005.95 px
+ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0545 | MIR: 0.0511 | MACE: 1633.92 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1380 | MIR: 0.0357 | MACE: 1041.32 px
+ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1372 | MIR: 0.0441 | MACE: 667.33 px
+ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0931 | MIR: 0.0462 | MACE: 578.57 px
+ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0541 | MIR: 0.0349 | MACE: 3050.75 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1554 | MIR: 0.0610 | MACE: 2844.51 px
+ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1534 | MIR: 0.0469 | MACE: 783.29 px
+ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1057 | MIR: 0.0269 | MACE: 638.10 px
+ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1533 | MIR: 0.0522 | MACE: 796.40 px
+ID: 051_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1335 | MIR: 0.0545 | MACE: 674.49 px
+ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1319 | MIR: 0.0606 | MACE: 702.14 px
+ID: 010_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1498 | MIR: 0.0632 | MACE: 513.27 px
+ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1125 | MIR: 0.0424 | MACE: 604.29 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1611 | MIR: 0.0397 | MACE: 490.09 px
+ID: 025_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0909 | MIR: 0.0462 | MACE: 748.93 px
+ID: 026_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0842 | MIR: 0.0517 | MACE: 578.85 px
+ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1268 | MIR: 0.0492 | MACE: 996.09 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0284 | MIR: 0.0411 | MACE: 627.23 px
+ID: 012_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1316 | MIR: 0.0348 | MACE: 485.30 px
+ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0337 | MIR: 0.0726 | MACE: 1195.96 px
 
 --- Validation Summary ---
 Overall SR_ME (Success Rate @5px):  0.00%
 Overall SR_MAE (Success Rate @10px): 0.00%
 AUC@10:                             0.0000
-Average Repeatability:              6.89%
-Average Matching Inliers Ratio:     5.58%
-Overall MACE (Mean Corner Error):   1538.79 px
-Max Registration Error (Average):   518.34 px
+Average Repeatability:              11.15%
+Average Matching Inliers Ratio:     4.77%
+Overall MACE (Mean Corner Error):   982.54 px
+Max Registration Error (Average):   651.96 px
 
 --- Validation Epoch 5 ---
-ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0411 | MIR: 0.0000 | MACE: 468.05 px
-ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0942 | MIR: 0.0000 | MACE: 16.55 px
-ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1123 | MIR: 0.0000 | MACE: 30.24 px
-ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0469 | MIR: 0.0000 | MACE: 351.54 px
-ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0223 | MIR: 0.0000 | MACE: 450.00 px
-ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0747 | MIR: 0.0000 | MACE: 185.81 px
-ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1119 | MIR: 0.0000 | MACE: 247.28 px
-ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0563 | MIR: 0.0000 | MACE: 301.94 px
-ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0828 | MIR: 0.0000 | MACE: 184.07 px
-ID: 051_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0948 | MIR: 0.0000 | MACE: 87.56 px
-ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0892 | MIR: 0.0000 | MACE: 48.87 px
-ID: 010_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0740 | MIR: 0.0000 | MACE: 96.54 px
-ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0872 | MIR: 0.0000 | MACE: 99.06 px
-ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0716 | MIR: 0.0000 | MACE: 184.16 px
-ID: 025_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0505 | MIR: 0.0000 | MACE: 305.08 px
-ID: 026_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0520 | MIR: 0.0000 | MACE: 286.50 px
-ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1175 | MIR: 0.0000 | MACE: 18.66 px
-ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0057 | MIR: 0.0000 | MACE: 492.08 px
-ID: 012_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0666 | MIR: 0.0000 | MACE: 46.27 px
-ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0372 | MIR: 0.0000 | MACE: 448.98 px
+ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0419 | MIR: 0.0000 | MACE: 468.05 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1374 | MIR: 0.0000 | MACE: 16.55 px
+ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1632 | MIR: 0.2308 | MACE: 2669.39 px
+ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1091 | MIR: 0.0000 | MACE: 351.54 px
+ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0572 | MIR: 0.0000 | MACE: 450.00 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.2073 | MIR: 0.0000 | MACE: 185.81 px
+ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1575 | MIR: 0.0000 | MACE: 247.28 px
+ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1205 | MIR: 0.0000 | MACE: 301.94 px
+ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1796 | MIR: 0.0000 | MACE: 184.07 px
+ID: 051_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1375 | MIR: 0.0000 | MACE: 87.56 px
+ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1315 | MIR: 0.0000 | MACE: 48.87 px
+ID: 010_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1694 | MIR: 0.0000 | MACE: 96.54 px
+ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1115 | MIR: 0.0000 | MACE: 99.06 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1588 | MIR: 0.0000 | MACE: 184.16 px
+ID: 025_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0991 | MIR: 0.0000 | MACE: 305.08 px
+ID: 026_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1023 | MIR: 0.0000 | MACE: 286.50 px
+ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1438 | MIR: 0.0000 | MACE: 18.66 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0439 | MIR: 0.0000 | MACE: 492.08 px
+ID: 012_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1670 | MIR: 0.0000 | MACE: 46.27 px
+ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0381 | MIR: 0.0000 | MACE: 448.98 px
 
 --- Validation Summary ---
 Overall SR_ME (Success Rate @5px):  0.00%
 Overall SR_MAE (Success Rate @10px): 0.00%
 AUC@10:                             0.0000
-Average Repeatability:              6.94%
-Average Matching Inliers Ratio:     0.00%
-Overall MACE (Mean Corner Error):   217.46 px
+Average Repeatability:              12.38%
+Average Matching Inliers Ratio:     1.15%
+Overall MACE (Mean Corner Error):   349.42 px
 Max Registration Error (Average):   inf px
 
 --- Validation Epoch 10 ---
-ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0370 | MIR: 0.0000 | MACE: 468.05 px
-ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0900 | MIR: 0.0000 | MACE: 16.55 px
-ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1079 | MIR: 0.0000 | MACE: 30.24 px
-ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0239 | MIR: 0.0000 | MACE: 351.54 px
-ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0296 | MIR: 0.0000 | MACE: 450.00 px
-ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0776 | MIR: 0.0000 | MACE: 185.81 px
-ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1150 | MIR: 0.0000 | MACE: 247.28 px
-ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0612 | MIR: 0.0000 | MACE: 301.94 px
-ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0962 | MIR: 0.0000 | MACE: 184.07 px
-ID: 051_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0820 | MIR: 0.0000 | MACE: 87.56 px
-ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0899 | MIR: 0.0000 | MACE: 48.87 px
-ID: 010_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0744 | MIR: 0.0000 | MACE: 96.54 px
-ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0670 | MIR: 0.0000 | MACE: 99.06 px
-ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0786 | MIR: 0.0000 | MACE: 184.16 px
-ID: 025_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0551 | MIR: 0.0000 | MACE: 305.08 px
-ID: 026_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0509 | MIR: 0.0000 | MACE: 286.50 px
-ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1181 | MIR: 0.0000 | MACE: 18.66 px
-ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0017 | MIR: 0.0000 | MACE: 492.08 px
-ID: 012_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0629 | MIR: 0.0000 | MACE: 46.27 px
-ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0223 | MIR: 0.0000 | MACE: 448.98 px
+ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0603 | MIR: 0.4138 | MACE: 1026.40 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1451 | MIR: 0.0000 | MACE: 16.55 px
+ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1672 | MIR: 0.3457 | MACE: 667.87 px
+ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0884 | MIR: 0.0000 | MACE: 351.54 px
+ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0592 | MIR: 0.2750 | MACE: 989.09 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1958 | MIR: 0.0000 | MACE: 185.81 px
+ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1593 | MIR: 0.4286 | MACE: 892.32 px
+ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1063 | MIR: 0.2429 | MACE: 822.89 px
+ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1793 | MIR: 0.2800 | MACE: 435.45 px
+ID: 051_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1493 | MIR: 1.0000 | MACE: 569.40 px
+ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1358 | MIR: 0.4697 | MACE: 621.50 px
+ID: 010_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1421 | MIR: 0.3077 | MACE: 555.12 px
+ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1153 | MIR: 0.3226 | MACE: 482.05 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1707 | MIR: 0.3750 | MACE: 472.76 px
+ID: 025_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0997 | MIR: 0.3404 | MACE: 583.62 px
+ID: 026_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1229 | MIR: 0.2879 | MACE: 1856.78 px
+ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1538 | MIR: 0.4348 | MACE: 673.29 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0417 | MIR: 0.3182 | MACE: 616.49 px
+ID: 012_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1699 | MIR: 0.2727 | MACE: 867.57 px
+ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0416 | MIR: 0.4516 | MACE: 1192.50 px
 
 --- Validation Summary ---
 Overall SR_ME (Success Rate @5px):  0.00%
 Overall SR_MAE (Success Rate @10px): 0.00%
 AUC@10:                             0.0000
-Average Repeatability:              6.71%
-Average Matching Inliers Ratio:     0.00%
-Overall MACE (Mean Corner Error):   217.46 px
+Average Repeatability:              12.52%
+Average Matching Inliers Ratio:     32.83%
+Overall MACE (Mean Corner Error):   693.95 px
 Max Registration Error (Average):   inf px
 
 --- Validation Epoch 15 ---
-ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0344 | MIR: 0.0000 | MACE: 468.05 px
-ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0883 | MIR: 0.0000 | MACE: 16.55 px
-ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0987 | MIR: 0.0000 | MACE: 30.24 px
-ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0246 | MIR: 0.0000 | MACE: 351.54 px
-ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0189 | MIR: 0.0000 | MACE: 450.00 px
-ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0713 | MIR: 0.0000 | MACE: 185.81 px
-ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0605 | MIR: 0.0000 | MACE: 247.28 px
-ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0197 | MIR: 0.0000 | MACE: 301.94 px
-ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0903 | MIR: 0.0000 | MACE: 184.07 px
-ID: 051_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0677 | MIR: 0.0000 | MACE: 87.56 px
-ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0812 | MIR: 0.0000 | MACE: 48.87 px
-ID: 010_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0793 | MIR: 0.0000 | MACE: 96.54 px
-ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0421 | MIR: 0.0000 | MACE: 99.06 px
-ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0789 | MIR: 0.0000 | MACE: 184.16 px
-ID: 025_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0262 | MIR: 0.0000 | MACE: 305.08 px
-ID: 026_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0313 | MIR: 0.0000 | MACE: 286.50 px
-ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0870 | MIR: 0.0000 | MACE: 18.66 px
-ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0102 | MIR: 0.0000 | MACE: 492.08 px
-ID: 012_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0719 | MIR: 0.0000 | MACE: 46.27 px
-ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0217 | MIR: 0.0000 | MACE: 448.98 px
-
---- Validation Summary ---
-Overall SR_ME (Success Rate @5px):  0.00%
-Overall SR_MAE (Success Rate @10px): 0.00%
-AUC@10:                             0.0000
-Average Repeatability:              5.52%
-Average Matching Inliers Ratio:     0.00%
-Overall MACE (Mean Corner Error):   217.46 px
-Max Registration Error (Average):   inf px
-
---- Validation Epoch 20 ---
-ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0194 | MIR: 0.0000 | MACE: 468.05 px
-ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0526 | MIR: 0.0000 | MACE: 16.55 px
-ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0743 | MIR: 0.0000 | MACE: 30.24 px
-ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0491 | MIR: 0.0000 | MACE: 351.54 px
-ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0252 | MIR: 0.0000 | MACE: 450.00 px
-ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0710 | MIR: 0.0000 | MACE: 185.81 px
-ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0345 | MIR: 0.0000 | MACE: 247.28 px
-ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0231 | MIR: 0.0000 | MACE: 301.94 px
-ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1023 | MIR: 0.0000 | MACE: 184.07 px
-ID: 051_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1000 | MIR: 0.0000 | MACE: 87.56 px
-ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0570 | MIR: 0.0000 | MACE: 48.87 px
-ID: 010_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0482 | MIR: 0.0000 | MACE: 96.54 px
-ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0500 | MIR: 0.0000 | MACE: 99.06 px
-ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0526 | MIR: 0.0000 | MACE: 184.16 px
-ID: 025_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0339 | MIR: 0.0000 | MACE: 305.08 px
-ID: 026_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0114 | MIR: 0.0000 | MACE: 286.50 px
-ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1017 | MIR: 0.0000 | MACE: 18.66 px
-ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0059 | MIR: 0.0000 | MACE: 492.08 px
-ID: 012_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0606 | MIR: 0.0000 | MACE: 46.27 px
+ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0422 | MIR: 0.0000 | MACE: 468.05 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1361 | MIR: 0.0000 | MACE: 16.55 px
+ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1538 | MIR: 0.0000 | MACE: 30.24 px
+ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0891 | MIR: 0.0000 | MACE: 351.54 px
+ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0480 | MIR: 0.0000 | MACE: 450.00 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1754 | MIR: 0.0000 | MACE: 185.81 px
+ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1524 | MIR: 0.0000 | MACE: 247.28 px
+ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0981 | MIR: 0.0000 | MACE: 301.94 px
+ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1819 | MIR: 0.0000 | MACE: 184.07 px
+ID: 051_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1388 | MIR: 0.0000 | MACE: 87.56 px
+ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1349 | MIR: 0.0000 | MACE: 48.87 px
+ID: 010_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1162 | MIR: 0.0000 | MACE: 96.54 px
+ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1107 | MIR: 0.0000 | MACE: 99.06 px
+ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1663 | MIR: 0.0000 | MACE: 184.16 px
+ID: 025_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1026 | MIR: 0.0000 | MACE: 305.08 px
+ID: 026_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1083 | MIR: 0.0000 | MACE: 286.50 px
+ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1418 | MIR: 0.0000 | MACE: 18.66 px
+ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0299 | MIR: 0.0000 | MACE: 492.08 px
+ID: 012_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.1297 | MIR: 0.0000 | MACE: 46.27 px
 ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0321 | MIR: 0.0000 | MACE: 448.98 px
 
 --- Validation Summary ---
 Overall SR_ME (Success Rate @5px):  0.00%
 Overall SR_MAE (Success Rate @10px): 0.00%
 AUC@10:                             0.0000
-Average Repeatability:              5.02%
-Average Matching Inliers Ratio:     0.00%
-Overall MACE (Mean Corner Error):   217.46 px
-Max Registration Error (Average):   inf px
-
---- Validation Epoch 25 ---
-ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0000 | MIR: 0.0000 | MACE: 468.05 px
-ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0409 | MIR: 0.0000 | MACE: 16.55 px
-ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0581 | MIR: 0.0000 | MACE: 30.24 px
-ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0143 | MIR: 0.0000 | MACE: 351.54 px
-ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0103 | MIR: 0.0000 | MACE: 450.00 px
-ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0618 | MIR: 0.0000 | MACE: 185.81 px
-ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0513 | MIR: 0.0000 | MACE: 247.28 px
-ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0153 | MIR: 0.0000 | MACE: 301.94 px
-ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0547 | MIR: 0.0000 | MACE: 184.07 px
-ID: 051_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0232 | MIR: 0.0000 | MACE: 87.56 px
-ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0476 | MIR: 0.0000 | MACE: 48.87 px
-ID: 010_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0278 | MIR: 0.0000 | MACE: 96.54 px
-ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0369 | MIR: 0.0000 | MACE: 99.06 px
-ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0706 | MIR: 0.0000 | MACE: 184.16 px
-ID: 025_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0357 | MIR: 0.0000 | MACE: 305.08 px
-ID: 026_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0180 | MIR: 0.0000 | MACE: 286.50 px
-ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0446 | MIR: 0.0000 | MACE: 18.66 px
-ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0116 | MIR: 0.0000 | MACE: 492.08 px
-ID: 012_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0414 | MIR: 0.0000 | MACE: 46.27 px
-ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0156 | MIR: 0.0000 | MACE: 448.98 px
-
---- Validation Summary ---
-Overall SR_ME (Success Rate @5px):  0.00%
-Overall SR_MAE (Success Rate @10px): 0.00%
-AUC@10:                             0.0000
-Average Repeatability:              3.40%
-Average Matching Inliers Ratio:     0.00%
-Overall MACE (Mean Corner Error):   217.46 px
-Max Registration Error (Average):   inf px
-
---- Validation Epoch 30 ---
-ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0200 | MIR: 0.0000 | MACE: 468.05 px
-ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0732 | MIR: 0.0000 | MACE: 16.55 px
-ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0569 | MIR: 0.0000 | MACE: 30.24 px
-ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0275 | MIR: 0.0000 | MACE: 351.54 px
-ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0000 | MIR: 0.0000 | MACE: 450.00 px
-ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0433 | MIR: 0.0000 | MACE: 185.81 px
-ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0237 | MIR: 0.0000 | MACE: 247.28 px
-ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0206 | MIR: 0.0000 | MACE: 301.94 px
-ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0481 | MIR: 0.0000 | MACE: 184.07 px
-ID: 051_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0366 | MIR: 0.0000 | MACE: 87.56 px
-ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0347 | MIR: 0.0000 | MACE: 48.87 px
-ID: 010_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0400 | MIR: 0.0000 | MACE: 96.54 px
-ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0404 | MIR: 0.0000 | MACE: 99.06 px
-ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0488 | MIR: 0.0000 | MACE: 184.16 px
-ID: 025_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0053 | MIR: 0.0000 | MACE: 305.08 px
-ID: 026_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0145 | MIR: 0.0000 | MACE: 286.50 px
-ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0505 | MIR: 0.0000 | MACE: 18.66 px
-ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0048 | MIR: 0.0000 | MACE: 492.08 px
-ID: 012_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0423 | MIR: 0.0000 | MACE: 46.27 px
-ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0153 | MIR: 0.0000 | MACE: 448.98 px
-
---- Validation Summary ---
-Overall SR_ME (Success Rate @5px):  0.00%
-Overall SR_MAE (Success Rate @10px): 0.00%
-AUC@10:                             0.0000
-Average Repeatability:              3.23%
-Average Matching Inliers Ratio:     0.00%
-Overall MACE (Mean Corner Error):   217.46 px
-Max Registration Error (Average):   inf px
-
---- Validation Epoch 35 ---
-ID: 049_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0136 | MIR: 0.0000 | MACE: 468.05 px
-ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0593 | MIR: 0.0000 | MACE: 16.55 px
-ID: 023_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0498 | MIR: 0.0000 | MACE: 30.24 px
-ID: 063_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0077 | MIR: 0.0000 | MACE: 351.54 px
-ID: 067_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0144 | MIR: 0.0000 | MACE: 450.00 px
-ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0560 | MIR: 0.0000 | MACE: 185.81 px
-ID: 041_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0392 | MIR: 0.0000 | MACE: 247.28 px
-ID: 054_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0230 | MIR: 0.0000 | MACE: 301.94 px
-ID: 008_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0538 | MIR: 0.0000 | MACE: 184.07 px
-ID: 051_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0430 | MIR: 0.0000 | MACE: 87.56 px
-ID: 062_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0315 | MIR: 0.0000 | MACE: 48.87 px
-ID: 010_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0413 | MIR: 0.0000 | MACE: 96.54 px
-ID: 018_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0504 | MIR: 0.0000 | MACE: 99.06 px
-ID: 024_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0508 | MIR: 0.0000 | MACE: 184.16 px
-ID: 025_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0163 | MIR: 0.0000 | MACE: 305.08 px
-ID: 026_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0118 | MIR: 0.0000 | MACE: 286.50 px
-ID: 065_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0576 | MIR: 0.0000 | MACE: 18.66 px
-ID: 003_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0040 | MIR: 0.0000 | MACE: 492.08 px
-ID: 012_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0575 | MIR: 0.0000 | MACE: 46.27 px
-ID: 058_01 | SR_ME: 0.0 | SR_MAE: 0.0 | Rep: 0.0083 | MIR: 0.0000 | MACE: 448.98 px
-
---- Validation Summary ---
-Overall SR_ME (Success Rate @5px):  0.00%
-Overall SR_MAE (Success Rate @10px): 0.00%
-AUC@10:                             0.0000
-Average Repeatability:              3.45%
+Average Repeatability:              11.44%
 Average Matching Inliers Ratio:     0.00%
 Overall MACE (Mean Corner Error):   217.46 px
 Max Registration Error (Average):   inf px
