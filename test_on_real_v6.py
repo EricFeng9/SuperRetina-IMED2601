@@ -272,7 +272,11 @@ def test_on_real():
     all_errors = []
     for r in all_results:
         if r['errors']: all_errors.extend(r['errors'])
-    auc_score = compute_auc(all_errors)
+    
+    auc5 = compute_auc(all_errors, max_threshold=5)
+    auc10 = compute_auc(all_errors, max_threshold=10)
+    auc20 = compute_auc(all_errors, max_threshold=20)
+    avg_auc = (auc5 + auc10 + auc20) / 3.0
 
     log_print("\n" + "="*50)
     log_print(f"EXPERIMENT: {exp_name} | MODE: {mode}")
