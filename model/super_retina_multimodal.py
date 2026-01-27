@@ -370,20 +370,55 @@ class SuperRetinaMultimodal(nn.Module):
         # v6.2 Phase 3: Hybrid PKE + Symmetric Mask
         # ==========================================
         if phase == 3:
-            # 准备 Grid Inverse (Fix -> Mov 映射) 用于 PKE 和 Mask Warping
+            # 准备 Grid: 
+            # 1. grid_fix_to_mov: Fix 图坐标 -> Mov 图坐标 (用于 PKE，把 Mov 特征与 Fix 关键点对其)
+            # 2. grid_mov_to_fix: Mov 图坐标 -> Fix 图坐标 (用于 Mask Warping，把 Fix Mask 变换到 Mov 视角)
+            
+            grid_fix_to_mov = None
+            grid_mov_to_fix = None
+            
             if H_0to1 is not None:
                 if H_0to1.dim() == 2: H_0to1 = H_0to1.unsqueeze(0)
-                grid_list = []
+                
+                # --- 构建 grid_fix_to_mov (原 grid_inverse) ---
+                # 遍历 Fix 的像素 (u,v)，计算其在 Mov 中的位置
+                grid_list_f2m = []
                 ys, xs = torch.meshgrid(torch.arange(H, device=fix_img.device), torch.arange(W, device=fix_img.device), indexing='ij')
+                # [H, W, 3] Homogeneous coords
                 pts = torch.stack([xs.float(), ys.float(), torch.ones_like(xs, dtype=torch.float32)], dim=-1).view(-1, 3)
+                
                 for b in range(B):
+                    # Fix -> Mov 变换
                     pts_mov = pts @ H_0to1[b].t()
+                    # Normalize to [-1, 1] for grid_sample
                     u = (2.0 * (pts_mov[:, 0] / (pts_mov[:, 2] + 1e-6)) / (W - 1)) - 1.0
                     v = (2.0 * (pts_mov[:, 1] / (pts_mov[:, 2] + 1e-6)) / (H - 1)) - 1.0
-                    grid_list.append(torch.stack([u, v], dim=-1).view(H, W, 2))
-                grid_inverse = torch.stack(grid_list, dim=0)
+                    grid_list_f2m.append(torch.stack([u, v], dim=-1).view(H, W, 2))
+                grid_fix_to_mov = torch.stack(grid_list_f2m, dim=0)
+
+                # --- 构建 grid_mov_to_fix (新增，用于 Mask Warping) ---
+                # 遍历 Mov 的像素 (u,v)，计算其在 Fix 中的位置 (需要逆变换)
+                grid_list_m2f = []
+                # Mov 图像尺寸也是 H, W
+                # 计算逆矩阵 H_1to0
+                try:
+                    H_1to0 = torch.linalg.inv(H_0to1)
+                except:
+                    # 兜底：如果不可逆，使用单位阵
+                    H_1to0 = torch.eye(3, device=fix_img.device).unsqueeze(0).repeat(B, 1, 1)
+
+                for b in range(B):
+                    # Mov -> Fix 变换
+                    pts_fix = pts @ H_1to0[b].t()
+                    # Normalize to [-1, 1]
+                    u = (2.0 * (pts_fix[:, 0] / (pts_fix[:, 2] + 1e-6)) / (W - 1)) - 1.0
+                    v = (2.0 * (pts_fix[:, 1] / (pts_fix[:, 2] + 1e-6)) / (H - 1)) - 1.0
+                    grid_list_m2f.append(torch.stack([u, v], dim=-1).view(H, W, 2))
+                grid_mov_to_fix = torch.stack(grid_list_m2f, dim=0)
+                
             else:
-                grid_inverse = torch.zeros(B, H, W, 2).to(fix_img.device)
+                grid_fix_to_mov = torch.zeros(B, H, W, 2).to(fix_img.device)
+                grid_mov_to_fix = torch.zeros(B, H, W, 2).to(fix_img.device)
 
             value_map_update = None
             
@@ -393,7 +428,7 @@ class SuperRetinaMultimodal(nn.Module):
                 loss_detector, number_pts, value_map_update, enhanced_label_pts, enhanced_label = \
                     pke_learn(detector_pred_fix[learn_index].clone(), 
                               descriptor_pred_fix[learn_index].clone(),
-                              grid_inverse[learn_index], 
+                              grid_fix_to_mov[learn_index], 
                               detector_pred_mov[learn_index].clone(),
                               descriptor_pred_mov[learn_index].clone(), 
                               self.kernel, self.dice,
@@ -407,7 +442,7 @@ class SuperRetinaMultimodal(nn.Module):
             # --- 描述子损失 (回归回归 Triplet) ---
             loss_descriptor, _ = self.descriptor_loss(
                 detector_pred_fix.clone(), label_point_positions, descriptor_pred_fix,
-                descriptor_pred_mov, grid_inverse, detector_pred_mov.clone()
+                descriptor_pred_mov, grid_fix_to_mov, detector_pred_mov.clone()
             )
 
             # --- Symmetric Mask Constraint (双边对称背景抑制) ---
@@ -418,11 +453,8 @@ class SuperRetinaMultimodal(nn.Module):
                 suppress_fix = (detector_pred_fix * bg_mask_fix).mean()
                 
                 # 2. 约束 Moving 支路 (将背景 Mask Warp 过去)
-                # 注意: bg_mask_fix 是在 Fix 空间的，grid_inverse 是 Fix->Mov 的映射，
-                # 但 F.grid_sample 的 grid 含义是从输出坐标找输入像素。
-                # 所以要让 Mov 支路受限，我们需要把 Fix Mask Warp 到 Mov 空间。
-                # 这里我们简化处理：利用 grid_inverse 将 bg_mask 从 Fix 映射到 Mov。
-                bg_mask_mov = F.grid_sample(bg_mask_fix, grid_inverse, mode='nearest', align_corners=True)
+                # 使用 grid_mov_to_fix: 遍历 Mov 像素，去 Fix Mask 里找对应值
+                bg_mask_mov = F.grid_sample(bg_mask_fix, grid_mov_to_fix, mode='nearest', align_corners=True)
                 suppress_mov = (detector_pred_mov * bg_mask_mov).mean()
                 
                 # 汇总抑制损失 (降低权重至 0.2 以防坍缩)
