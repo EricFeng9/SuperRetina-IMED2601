@@ -140,7 +140,7 @@ def validate(model, val_dataset, device, epoch, save_dir, log_file, train_config
     验证函数:评估模型在真实数据集上的表现
     使用与 test_on_real.py 相同的评估流程
     """
-    from measurement import calculate_metrics
+    from measurement_SuperRetina import calculate_metrics, compute_auc
     
     model.eval()
     all_metrics = []
@@ -299,21 +299,38 @@ def validate(model, val_dataset, device, epoch, save_dir, log_file, train_config
             mace = compute_corner_error(H_est, H_gt, h_f, w_f) if H_gt is not None else float('inf')
 
             # 使用 measurement.py 获取其他指标 (Rep, MIR)
-            metrics = calculate_metrics(
-                img_origin=img_fix_raw, img_result=img_mov_resized,
-                mkpts0=mkpts0, mkpts1=mkpts1,
-                kpts0=kps_f_orig, kpts1=kps_m_orig,
-                ctrl_pts0=pts_fix_gt, ctrl_pts1=pts_mov_gt,
-                H_gt=H_gt
-            )
-            # 覆盖 mean_error 为 MACE
-            metrics['mean_error'] = mace
+            # Scaling to Paper size 2912x2912 for metric calculation
+            orig_size_ref = (2912, 2912)
+            sc_f = [orig_size_ref[1] / 512.0, orig_size_ref[0] / 512.0]
+            sc_m = [orig_size_ref[1] / 512.0, orig_size_ref[0] / 512.0]
+            
+            mkpts0_p = kps_fix.cpu().numpy()[ [m.queryIdx for m in good_matches] ] * sc_f if good_matches else np.array([])
+            mkpts1_p = kps_mov.cpu().numpy()[ [m.trainIdx for m in good_matches] ] * sc_m if good_matches else np.array([])
+            
+            # Scale GT Control Points to 2912x2912
+            pts_f_p = pts_fix_gt * [orig_size_ref[1] / w_f, orig_size_ref[0] / h_f]
+            pts_m_p = pts_mov_gt * [orig_size_ref[1] / w_m, orig_size_ref[0] / h_m]
+
+            # Compute Metrics aligned with paper
+            res_paper = calculate_metrics(mkpts0_p, mkpts1_p, pts_f_p, pts_m_p, orig_size=orig_size_ref)
+            
+            # Also keep compatibility with some previous logging if needed, 
+            # but primary focus is paper metrics
+            metrics = {
+                'MEE': res_paper['MEE'],
+                'MAE': res_paper['MAE'],
+                'is_acceptable': res_paper['is_acceptable'],
+                'is_inaccurate': res_paper['is_inaccurate'],
+                'is_failed': res_paper['is_failed'],
+                'errors': res_paper['errors'],
+                'MACE': mace # keep MACE for tracking corner error
+            }
             
             all_metrics.append(metrics)
             
-            log_f.write(f"ID: {sample_id} | SR_ME: {metrics['SR_ME']} | SR_MAE: {metrics['SR_MAE']} | "
-                       f"Rep: {metrics['Rep']:.4f} | MIR: {metrics['MIR']:.4f} | "
-                       f"MACE: {metrics['mean_error']:.2f} px\n")
+            log_f.write(f"ID: {sample_id} | Status: {res_paper['status']:10} | "
+                       f"MEE: {metrics['MEE']:.2f} | MAE: {metrics['MAE']:.2f} | "
+                       f"MACE: {metrics['MACE']:.2f} px\n")
             
             # 保存可视化结果
             # (sample_save_dir 已在循环开始处定义并创建)
@@ -376,36 +393,38 @@ def validate(model, val_dataset, device, epoch, save_dir, log_file, train_config
             draw_matches(img_fix_raw, kps_f_orig, img_mov_resized, kps_m_orig, good_matches, 
                         os.path.join(sample_save_dir, f'{sample_id}_matches.png'))
 
-    # 计算平均指标 (包含失败样本)
-    summary = {}
-    for key in ['SR_ME', 'SR_MAE', 'Rep', 'MIR', 'mean_error', 'max_error']:
-        vals = [m[key] for m in all_metrics]
-        summary[key] = np.mean(vals) if vals else 0.0
+    # 计算平均指标
+    num_total = len(all_metrics)
+    summary = {
+        'Acceptable_Rate': np.mean([m['is_acceptable'] for m in all_metrics]),
+        'Inaccurate_Rate': np.mean([m['is_inaccurate'] for m in all_metrics]),
+        'Failed_Rate': np.mean([m['is_failed'] for m in all_metrics]),
+        'Avg_MACE': np.mean([m['MACE'] for m in all_metrics if m['MACE'] != float('inf')])
+    }
     
-    # 计算 AUC@10 (Area Under Curve of Cumulative Error Distribution up to 10px)
-    errors = np.array([m['mean_error'] for m in all_metrics])
-    # 处理 inf 误差 (配准失败)
-    errors[np.isinf(errors)] = 1e9 
+    # 计算 mAUC
+    all_errors = []
+    for m in all_metrics:
+        if m['errors']: all_errors.extend(m['errors'])
     
-    thresholds = np.linspace(0, 10, 1000) # 0到10px，1000个采样点
-    # 计算每个阈值下的累积成功率 (CDF)
-    success_rates = [np.mean(errors <= t) for t in thresholds]
-    # 计算曲线下面积 (归一化到 0-1 范围，本来积分是 0-10，除以10做归一化)
-    # 实际上 AUC@10 通常指 success rate 的平均值，或者积分值。这里归一化到 0-1 更直观。
-    auc_10 = np.trapz(success_rates, thresholds) / 10.0
+    auc5 = compute_auc(all_errors, max_threshold=5)
+    auc10 = compute_auc(all_errors, max_threshold=10)
+    auc20 = compute_auc(all_errors, max_threshold=20)
+    avg_auc = (auc5 + auc10 + auc20) / 3.0
     
-    log_f.write(f"\n--- Validation Summary ---\n")
-    log_f.write(f"Overall SR_ME (Success Rate @5px):  {summary['SR_ME']*100:.2f}%\n")
-    log_f.write(f"Overall SR_MAE (Success Rate @10px): {summary['SR_MAE']*100:.2f}%\n")
-    log_f.write(f"AUC@10:                             {auc_10:.4f}\n")
-    log_f.write(f"Average Repeatability:              {summary['Rep']*100:.2f}%\n")
-    log_f.write(f"Average Matching Inliers Ratio:     {summary['MIR']*100:.2f}%\n")
-    log_f.write(f"Overall MACE (Mean Corner Error):   {summary['mean_error']:.2f} px\n")
-    log_f.write(f"Max Registration Error (Average):   {summary['max_error']:.2f} px\n")
+    log_f.write(f"\n--- Validation Summary (SuperRetina Paper Aligned) ---\n")
+    log_f.write(f"Acceptable Rate: {summary['Acceptable_Rate']*100:.2f}%\n")
+    log_f.write(f"Inaccurate Rate: {summary['Inaccurate_Rate']*100:.2f}%\n")
+    log_f.write(f"Failed Rate:     {summary['Failed_Rate']*100:.2f}%\n")
+    log_f.write(f"AUC@5:           {auc5:.4f}\n")
+    log_f.write(f"AUC@10:          {auc10:.4f}\n")
+    log_f.write(f"AUC@20:          {auc20:.4f}\n")
+    log_f.write(f"Avg AUC@5-20:    {avg_auc:.4f}\n")
+    log_f.write(f"Overall MACE:    {summary['Avg_MACE']:.2f} px\n")
     log_f.close()
     
-    print(f'Validation Epoch {epoch} Finished. MACE: {summary["mean_error"]:.2f} px')
-    return summary["mean_error"]
+    print(f'Validation Epoch {epoch} Finished. Avg AUC@5-20: {avg_auc:.4f}, Acc Rate: {summary["Acceptable_Rate"]*100:.2f}%')
+    return avg_auc
 
 def train_multimodal():
     """
@@ -523,10 +542,15 @@ def train_multimodal():
         start_epoch = checkpoint.get('epoch', 0) + 1
         
         # 核心修复：恢复最佳指标值，确保 bestcheckpoint 逻辑延续
-        if 'mace' in checkpoint:
-            best_mace = checkpoint['mace']
-            best_val_mace = best_mace
-            log_print(f"Restored Best MACE: {best_mace:.2f} px")
+        if 'auc_score' in checkpoint:
+            best_auc = checkpoint['auc_score']
+            best_val_score = best_auc
+            log_print(f"Restored Best AUC: {best_auc:.4f}")
+        elif 'mace' in checkpoint:
+            # 兼容旧版本
+            best_auc = 0.0
+            best_val_score = 0.0
+            log_print(f"Restored from MACE-based checkpoint. Resetting AUC tracker.")
             
         log_print(f"Resuming from Epoch {start_epoch}")
     # 其次使用配置文件里的 pretrained_path (仅加载权重)
@@ -550,13 +574,13 @@ def train_multimodal():
         
     value_maps_running = {} if not is_value_map_save else None
     
-    # 最佳指标追踪 (MACE 越小越好)
-    best_mace = float('inf')
+    # 最佳指标追踪 (AUC 越大越好)
+    best_auc = -1.0
     
     # 早停机制变量 (仅在epoch >= 100后启用)
     patience = 5  # 验证指标连续5次不提升则早停
     patience_counter = 0
-    best_val_mace = float('inf')
+    best_val_score = -1.0
 
     # ==========================================
     # v6.2: 课程学习阶段设置
@@ -692,13 +716,13 @@ def train_multimodal():
         
         # 每 5 个 Epoch 进行一次验证并保存模型
         if epoch % 5 == 0:
-            mace_test = validate(model, val_set, device, epoch, save_root, log_file, train_config, reg_type)
+            auc_test = validate(model, val_set, device, epoch, save_root, log_file, train_config, reg_type)
             
             state = {
                 'net': model.state_dict(),
                 'optimizer': optimizer.state_dict(),
                 'epoch': epoch,
-                'mace': mace_test
+                'auc_score': auc_test
             }
             
             # 保存最新模型
@@ -707,28 +731,28 @@ def train_multimodal():
             torch.save(state, os.path.join(latest_dir, 'checkpoint.pth'))
             # 保存epoch信息
             with open(os.path.join(latest_dir, 'checkpoint_info.txt'), 'w') as f:
-                f.write(f'Latest Checkpoint\nEpoch: {epoch}\nMACE: {mace_test:.2f} px\n')
+                f.write(f'Latest Checkpoint\nEpoch: {epoch}\nAvg AUC: {auc_test:.4f}\n')
             
-            # 保存 MACE 表现最好的模型 (越小越好)
-            if mace_test < best_mace:
-                log_print(f"New Best MACE: {mace_test:.2f} (Previous: {best_mace:.2f})")
-                best_mace = mace_test
+            # 保存 AUC 表现最好的模型 (越大越好)
+            if auc_test > best_auc:
+                log_print(f"New Best AUC: {auc_test:.4f} (Previous: {best_auc:.4f})")
+                best_auc = auc_test
                 best_dir = os.path.join(save_root, 'bestcheckpoint')
                 os.makedirs(best_dir, exist_ok=True)
                 torch.save(state, os.path.join(best_dir, 'checkpoint.pth'))
                 # 保存epoch信息
                 with open(os.path.join(best_dir, 'checkpoint_info.txt'), 'w') as f:
-                    f.write(f'Best Checkpoint\nEpoch: {epoch}\nMACE: {mace_test:.2f} px\n')
+                    f.write(f'Best Checkpoint\nEpoch: {epoch}\nAvg AUC: {auc_test:.4f}\n')
             
             # 早停机制 (仅在 epoch >= 100 后启用)
             if epoch >= 100:
-                if mace_test < best_val_mace:
-                    best_val_mace = mace_test
+                if auc_test > best_val_score:
+                    best_val_score = auc_test
                     patience_counter = 0
-                    log_print(f'[Early Stopping] Validation MACE improved to {best_val_mace:.2f}. Reset patience counter.')
+                    log_print(f'[Early Stopping] Validation AUC improved to {best_val_score:.4f}. Reset patience counter.')
                 else:
                     patience_counter += 1
-                    log_print(f'[Early Stopping] Validation MACE did not improve. Patience: {patience_counter}/{patience}')
+                    log_print(f'[Early Stopping] Validation AUC did not improve. Patience: {patience_counter}/{patience}')
                 
                 if patience_counter >= patience:
                     log_print(f'Early stopping triggered at epoch {epoch}. Best validation MACE: {best_val_mace:.2f}')
