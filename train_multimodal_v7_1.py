@@ -54,12 +54,18 @@ def compute_corner_error(H_est, H_gt, height, width):
     corners_gt = corners_gt_homo[:, :2] / (corners_gt_homo[:, 2:] + 1e-6)
     
     # 预测变换后的角点
-    corners_est_homo = (H_est @ corners_homo.T).T
-    corners_est = corners_est_homo[:, :2] / (corners_est_homo[:, 2:] + 1e-6)
-    
+    # 检查输入矩阵是否有 NaNs
+    if H_est is None or not np.isfinite(H_est).all():
+        return float('inf')
+
+    # 预测变换后的角点
     try:
+        corners_est_homo = (H_est @ corners_homo.T).T
+        corners_est = corners_est_homo[:, :2] / (corners_est_homo[:, 2:] + 1e-6)
+    
         errors = np.sqrt(np.sum((corners_est - corners_gt)**2, axis=1))
         mace = np.mean(errors)
+        if np.isnan(mace): mace = float('inf')
     except:
         mace = float('inf')
     return mace
@@ -775,6 +781,13 @@ def train_multimodal():
                           pke_supervised=pke_supervised) # model.forward v6 will remove vessel_weight
                     
                 loss.backward()
+                
+                # --- NaN Check ---
+                if not torch.isfinite(loss):
+                    log_print(f"Warning: Loss is {loss.item()}. Skipping step to avoid crash.")
+                    optimizer.zero_grad()
+                    continue
+                
                 optimizer.step()
                 
             # 更新持久化的 Value Maps

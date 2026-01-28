@@ -36,5 +36,5 @@ VALUE_MAP:
   value_increase_point: 5
   value_increase_area: 1
   value_decay: 1
-  is_value_map_save: false
+  is_value_map_save: true
   value_map_save_dir: ./save/value_maps_tmp

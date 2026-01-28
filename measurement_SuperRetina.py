@@ -67,7 +67,7 @@ def calculate_metrics(mkpts0, mkpts1, ctrl_pts0, ctrl_pts1, orig_size=(2912, 291
     else:
         H_pred, _ = cv2.findHomography(mkpts1, mkpts0, cv2.RANSAC, RANSAC_THR)
 
-    if H_pred is None:
+    if H_pred is None or not np.isfinite(H_pred).all():
         results['status'] = 'failed'
         return results
 
