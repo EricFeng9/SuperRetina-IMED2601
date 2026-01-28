@@ -442,11 +442,21 @@ def train_real_v6():
         if epoch % 5 == 0:
             auc = validate(model, base_val, device, epoch, save_root, train_config, args.mode)
             state = {'net': model.state_dict(), 'epoch': epoch, 'auc_score': auc}
-            torch.save(state, os.path.join(save_root, 'latestpoint', 'checkpoint.pth')) if os.makedirs(os.path.join(save_root, 'latestpoint'), exist_ok=True) else torch.save(state, os.path.join(save_root, 'latestpoint', 'checkpoint.pth'))
+            
+            # 保存最新模型
+            latest_dir = os.path.join(save_root, 'latestpoint')
+            os.makedirs(latest_dir, exist_ok=True)
+            torch.save(state, os.path.join(latest_dir, 'checkpoint.pth'))
+            with open(os.path.join(latest_dir, 'checkpoint_info.txt'), 'w') as f:
+                f.write(f'Latest Checkpoint\nEpoch: {epoch}\nAvg AUC: {auc:.4f}\n')
+
             if auc > best_auc:
                 best_auc = auc
-                os.makedirs(os.path.join(save_root, 'bestcheckpoint'), exist_ok=True)
-                torch.save(state, os.path.join(save_root, 'bestcheckpoint', 'checkpoint.pth'))
+                best_dir = os.path.join(save_root, 'bestcheckpoint')
+                os.makedirs(best_dir, exist_ok=True)
+                torch.save(state, os.path.join(best_dir, 'checkpoint.pth'))
+                with open(os.path.join(best_dir, 'checkpoint_info.txt'), 'w') as f:
+                    f.write(f'Best Checkpoint\nEpoch: {epoch}\nAvg AUC: {auc:.4f}\n')
                 log_print(f"New Best AUC: {auc:.4f}")
 
             # 早停机制 (仅在 epoch >= 100 后启用)

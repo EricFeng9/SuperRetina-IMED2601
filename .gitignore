@@ -8,3 +8,4 @@ save_baseline/*
 !dataset/operation_pre_filtered_cffa/operation_pre_filtered_cffa_dataset.py
 !dataset/operation_pre_filtered_cfoct/operation_pre_filtered_cfoct_dataset.py
 !dataset/operation_pre_filtered_octfa/operation_pre_filtered_octfa_dataset.py
+weights/*
