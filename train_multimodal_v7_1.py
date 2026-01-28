@@ -661,11 +661,18 @@ def train_multimodal():
             # --- v7 Correction: Freeze Fix Encoder & Heads (Avoid Feature Drift) ---
             # 只训练 Moving Encoder 以适配 Fix Encoder (Anchor) 的特征空间
             # 保证 Detector Head 接收到的特征是可以被识别的 (即 Fix Pretrained Space)
+            # --- v7 Correction: Freeze Fix Encoder & Heads (Avoid Feature Drift) ---
+            # 只训练 Moving Encoder 和 Descriptor Head 以适配 Fix Encoder (Anchor) 的特征空间
+            # 保证 Detector Head 接收到的特征是可以被识别的 (即 Fix Pretrained Space)
             for n, p in model.named_parameters():
                 if 'encoder_mov' in n:
-                    p.requires_grad = True
+                    p.requires_grad = True # 训练 Moving Encoder
+                elif 'encoder_fix' in n:
+                    p.requires_grad = False # 冻结 Fix Encoder (Anchor)
+                elif any(k in n for k in ['convDa', 'convDb', 'convDc', 'trans_conv']):
+                    p.requires_grad = True # 训练 Descriptor Head
                 else:
-                    p.requires_grad = False
+                    p.requires_grad = False # 冻结 Detector Head & Others
         else:
             phase = 3 
             pke_supervised = False 
