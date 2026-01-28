@@ -639,9 +639,13 @@ def train_multimodal():
             pke_supervised = False
             model.PKE_learn = False 
             phase_name = f"Phase 0: Modality Adaptation & Space Alignment (Epoch {epoch}/{phase0_epochs})"
-            # --- v7: 冻结检测头 ---
+            # --- v7 Correction: Freeze Fix Encoder & Heads (Avoid Feature Drift) ---
+            # 只训练 Moving Encoder 以适配 Fix Encoder (Anchor) 的特征空间
+            # 保证 Detector Head 接收到的特征是可以被识别的 (即 Fix Pretrained Space)
             for n, p in model.named_parameters():
-                if 'dconv_up' in n or 'conv_last' in n:
+                if 'encoder_mov' in n:
+                    p.requires_grad = True
+                else:
                     p.requires_grad = False
         else:
             phase = 3 

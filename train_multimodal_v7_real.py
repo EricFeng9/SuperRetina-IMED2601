@@ -405,9 +405,12 @@ def train_real_v6():
         if epoch <= phase0_epochs:
             phase, model.PKE_learn = 0, False
             phase_msg = f"Phase 0: Modality Adaptation & Space Alignment (Epoch {epoch}/{phase0_epochs})"
-            # --- v7: 冻结检测头 ---
+            # --- v7 Correction: Freeze Fix Encoder & Heads ---
+            # 仅放开 encoder_mov 进行域适配，保持 Fix 侧特征空间稳定作为 Anchor
             for n, p in model.named_parameters():
-                if 'dconv_up' in n or 'conv_last' in n:
+                if 'encoder_mov' in n:
+                    p.requires_grad = True
+                else:
                     p.requires_grad = False
         else:
             phase, model.PKE_learn = 3, True
