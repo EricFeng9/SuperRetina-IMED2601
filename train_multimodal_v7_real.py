@@ -407,8 +407,14 @@ def train_real_v6():
             phase_msg = f"Phase 0: Modality Adaptation & Space Alignment (Epoch {epoch}/{phase0_epochs})"
             # --- v7 Correction: Freeze Fix Encoder & Heads ---
             # 仅放开 encoder_mov 进行域适配，保持 Fix 侧特征空间稳定作为 Anchor
+            # --- v7 Correction: Freeze Fix Encoder & Heads ---
+            # 仅放开 encoder_mov 和 Descriptor Head 进行域适配，保持 Fix 侧特征空间稳定作为 Anchor
             for n, p in model.named_parameters():
                 if 'encoder_mov' in n:
+                    p.requires_grad = True
+                elif 'encoder_fix' in n:
+                    p.requires_grad = False
+                elif any(k in n for k in ['convDa', 'convDb', 'convDc', 'trans_conv']):
                     p.requires_grad = True
                 else:
                     p.requires_grad = False
