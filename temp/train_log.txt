@@ -1,320 +1,176 @@
-Using device: cuda:0 | Experiment: 260127_2_v7
+Using device: cuda:0 | Experiment: 260127_2_v7_1
 Loading official Pretrained weight from weights/SuperRetina.pth (Mapping to Dual-Path)
 Successfully mapped and loaded pretrained weights (Strict=False).
 Running initial validation...
 --- Phase 0: Modality Adaptation & Space Alignment (Epoch 1/30) ---
-Train Total Loss: 1.5398 (Det: 0.0000, Desc: 1.5398)
+Train Total Loss: 0.9877 (Det: 0.0000, Desc: 0.9877)
 --- Phase 0: Modality Adaptation & Space Alignment (Epoch 2/30) ---
-Train Total Loss: 1.3901 (Det: 0.0000, Desc: 1.3901)
+Train Total Loss: 0.7448 (Det: 0.0000, Desc: 0.7448)
 --- Phase 0: Modality Adaptation & Space Alignment (Epoch 3/30) ---
-Train Total Loss: 1.3087 (Det: 0.0000, Desc: 1.3087)
+Train Total Loss: 0.6613 (Det: 0.0000, Desc: 0.6613)
 --- Phase 0: Modality Adaptation & Space Alignment (Epoch 4/30) ---
-Train Total Loss: 1.2492 (Det: 0.0000, Desc: 1.2492)
+Train Total Loss: 0.6246 (Det: 0.0000, Desc: 0.6246)
 --- Phase 0: Modality Adaptation & Space Alignment (Epoch 5/30) ---
-Train Total Loss: 1.2706 (Det: 0.0000, Desc: 1.2706)
-New Best AUC: 0.0423 (Previous: -1.0000)
+Train Total Loss: 0.5832 (Det: 0.0000, Desc: 0.5832)
+New Best AUC: 0.0362 (Previous: -1.0000)
 --- Phase 0: Modality Adaptation & Space Alignment (Epoch 6/30) ---
-Train Total Loss: 1.2473 (Det: 0.0000, Desc: 1.2473)
+Train Total Loss: 0.5506 (Det: 0.0000, Desc: 0.5506)
 --- Phase 0: Modality Adaptation & Space Alignment (Epoch 7/30) ---
-Train Total Loss: 1.2220 (Det: 0.0000, Desc: 1.2220)
+Train Total Loss: 0.5264 (Det: 0.0000, Desc: 0.5264)
 --- Phase 0: Modality Adaptation & Space Alignment (Epoch 8/30) ---
-Train Total Loss: 1.2139 (Det: 0.0000, Desc: 1.2139)
+Train Total Loss: 0.5149 (Det: 0.0000, Desc: 0.5149)
 --- Phase 0: Modality Adaptation & Space Alignment (Epoch 9/30) ---
-Train Total Loss: 1.1996 (Det: 0.0000, Desc: 1.1996)
+Train Total Loss: 0.4974 (Det: 0.0000, Desc: 0.4974)
 --- Phase 0: Modality Adaptation & Space Alignment (Epoch 10/30) ---
-Train Total Loss: 1.2026 (Det: 0.0000, Desc: 1.2026)
+Train Total Loss: 0.4905 (Det: 0.0000, Desc: 0.4905)
 --- Phase 0: Modality Adaptation & Space Alignment (Epoch 11/30) ---
-Train Total Loss: 1.2094 (Det: 0.0000, Desc: 1.2094)
+Train Total Loss: 0.4986 (Det: 0.0000, Desc: 0.4986)
 --- Phase 0: Modality Adaptation & Space Alignment (Epoch 12/30) ---
-Train Total Loss: 1.1854 (Det: 0.0000, Desc: 1.1854)
+Train Total Loss: 0.4541 (Det: 0.0000, Desc: 0.4541)
 --- Phase 0: Modality Adaptation & Space Alignment (Epoch 13/30) ---
-Train Total Loss: 1.1789 (Det: 0.0000, Desc: 1.1789)
+Train Total Loss: 0.4670 (Det: 0.0000, Desc: 0.4670)
 --- Phase 0: Modality Adaptation & Space Alignment (Epoch 14/30) ---
-Train Total Loss: 1.1507 (Det: 0.0000, Desc: 1.1507)
+Train Total Loss: 0.4434 (Det: 0.0000, Desc: 0.4434)
 --- Phase 0: Modality Adaptation & Space Alignment (Epoch 15/30) ---
-Train Total Loss: 1.1772 (Det: 0.0000, Desc: 1.1772)
-New Best AUC: 0.0585 (Previous: 0.0423)
+Train Total Loss: 0.4609 (Det: 0.0000, Desc: 0.4609)
 --- Phase 0: Modality Adaptation & Space Alignment (Epoch 16/30) ---
-Train Total Loss: 1.1648 (Det: 0.0000, Desc: 1.1648)
+Train Total Loss: 0.4354 (Det: 0.0000, Desc: 0.4354)
 --- Phase 0: Modality Adaptation & Space Alignment (Epoch 17/30) ---
-Train Total Loss: 1.1483 (Det: 0.0000, Desc: 1.1483)
+Train Total Loss: 0.4529 (Det: 0.0000, Desc: 0.4529)
 --- Phase 0: Modality Adaptation & Space Alignment (Epoch 18/30) ---
-Train Total Loss: 1.1558 (Det: 0.0000, Desc: 1.1558)
+Train Total Loss: 0.4303 (Det: 0.0000, Desc: 0.4303)
 --- Phase 0: Modality Adaptation & Space Alignment (Epoch 19/30) ---
-Train Total Loss: 1.1478 (Det: 0.0000, Desc: 1.1478)
+Train Total Loss: 0.4349 (Det: 0.0000, Desc: 0.4349)
 --- Phase 0: Modality Adaptation & Space Alignment (Epoch 20/30) ---
-Train Total Loss: 1.1430 (Det: 0.0000, Desc: 1.1430)
+Train Total Loss: 0.4248 (Det: 0.0000, Desc: 0.4248)
 --- Phase 0: Modality Adaptation & Space Alignment (Epoch 21/30) ---
-Train Total Loss: 1.1379 (Det: 0.0000, Desc: 1.1379)
+Train Total Loss: 0.4310 (Det: 0.0000, Desc: 0.4310)
 --- Phase 0: Modality Adaptation & Space Alignment (Epoch 22/30) ---
-Train Total Loss: 1.1267 (Det: 0.0000, Desc: 1.1267)
+Train Total Loss: 0.4122 (Det: 0.0000, Desc: 0.4122)
 --- Phase 0: Modality Adaptation & Space Alignment (Epoch 23/30) ---
-Train Total Loss: 1.1380 (Det: 0.0000, Desc: 1.1380)
+Train Total Loss: 0.4130 (Det: 0.0000, Desc: 0.4130)
 --- Phase 0: Modality Adaptation & Space Alignment (Epoch 24/30) ---
-Train Total Loss: 1.1400 (Det: 0.0000, Desc: 1.1400)
+Train Total Loss: 0.4195 (Det: 0.0000, Desc: 0.4195)
 --- Phase 0: Modality Adaptation & Space Alignment (Epoch 25/30) ---
-Train Total Loss: 1.1295 (Det: 0.0000, Desc: 1.1295)
+Train Total Loss: 0.4037 (Det: 0.0000, Desc: 0.4037)
 --- Phase 0: Modality Adaptation & Space Alignment (Epoch 26/30) ---
-Train Total Loss: 1.1146 (Det: 0.0000, Desc: 1.1146)
+Train Total Loss: 0.4047 (Det: 0.0000, Desc: 0.4047)
 --- Phase 0: Modality Adaptation & Space Alignment (Epoch 27/30) ---
-Train Total Loss: 1.1062 (Det: 0.0000, Desc: 1.1062)
+Train Total Loss: 0.3963 (Det: 0.0000, Desc: 0.3963)
 --- Phase 0: Modality Adaptation & Space Alignment (Epoch 28/30) ---
-Train Total Loss: 1.1205 (Det: 0.0000, Desc: 1.1205)
+Train Total Loss: 0.3883 (Det: 0.0000, Desc: 0.3883)
 --- Phase 0: Modality Adaptation & Space Alignment (Epoch 29/30) ---
-Train Total Loss: 1.1337 (Det: 0.0000, Desc: 1.1337)
+Train Total Loss: 0.3976 (Det: 0.0000, Desc: 0.3976)
 --- Phase 0: Modality Adaptation & Space Alignment (Epoch 30/30) ---
-Train Total Loss: 1.1267 (Det: 0.0000, Desc: 1.1267)
+Train Total Loss: 0.3738 (Det: 0.0000, Desc: 0.3738)
 --- Phase 1+: Hybrid PKE Registration (Epoch 31/500) ---
-Train Total Loss: 0.5539 (Det: 0.3656, Desc: 0.1883)
+Train Total Loss: 0.5609 (Det: 0.3653, Desc: 0.1956)
 --- Phase 1+: Hybrid PKE Registration (Epoch 32/500) ---
-Train Total Loss: 0.4816 (Det: 0.3022, Desc: 0.1794)
+Train Total Loss: 0.4971 (Det: 0.3042, Desc: 0.1929)
 --- Phase 1+: Hybrid PKE Registration (Epoch 33/500) ---
-Train Total Loss: 0.4722 (Det: 0.2930, Desc: 0.1792)
+Train Total Loss: 0.4796 (Det: 0.2931, Desc: 0.1865)
 --- Phase 1+: Hybrid PKE Registration (Epoch 34/500) ---
-Train Total Loss: 0.4652 (Det: 0.2863, Desc: 0.1789)
+Train Total Loss: 0.4682 (Det: 0.2855, Desc: 0.1826)
 --- Phase 1+: Hybrid PKE Registration (Epoch 35/500) ---
-Train Total Loss: 0.4571 (Det: 0.2824, Desc: 0.1746)
-New Best AUC: 0.0656 (Previous: 0.0585)
+Train Total Loss: 0.4555 (Det: 0.2800, Desc: 0.1755)
 --- Phase 1+: Hybrid PKE Registration (Epoch 36/500) ---
-Train Total Loss: 0.4527 (Det: 0.2802, Desc: 0.1725)
+Train Total Loss: 0.4509 (Det: 0.2766, Desc: 0.1744)
 --- Phase 1+: Hybrid PKE Registration (Epoch 37/500) ---
-Train Total Loss: 0.4470 (Det: 0.2746, Desc: 0.1724)
+Train Total Loss: 0.4461 (Det: 0.2733, Desc: 0.1728)
 --- Phase 1+: Hybrid PKE Registration (Epoch 38/500) ---
-Train Total Loss: 0.4374 (Det: 0.2689, Desc: 0.1685)
+Train Total Loss: 0.4393 (Det: 0.2690, Desc: 0.1703)
 --- Phase 1+: Hybrid PKE Registration (Epoch 39/500) ---
-Train Total Loss: 0.4411 (Det: 0.2699, Desc: 0.1712)
+Train Total Loss: 0.4376 (Det: 0.2673, Desc: 0.1702)
 --- Phase 1+: Hybrid PKE Registration (Epoch 40/500) ---
-Train Total Loss: 0.4398 (Det: 0.2700, Desc: 0.1698)
-New Best AUC: 0.0769 (Previous: 0.0656)
+Train Total Loss: 0.4373 (Det: 0.2659, Desc: 0.1714)
 --- Phase 1+: Hybrid PKE Registration (Epoch 41/500) ---
-Train Total Loss: 0.4338 (Det: 0.2659, Desc: 0.1679)
+Train Total Loss: 0.4346 (Det: 0.2647, Desc: 0.1699)
 --- Phase 1+: Hybrid PKE Registration (Epoch 42/500) ---
-Train Total Loss: 0.4307 (Det: 0.2633, Desc: 0.1673)
+Using device: cuda:0 | Experiment: 260127_2_v7_1
+Train Total Loss: 0.4323 (Det: 0.2637, Desc: 0.1686)
 --- Phase 1+: Hybrid PKE Registration (Epoch 43/500) ---
-Train Total Loss: 0.4277 (Det: 0.2614, Desc: 0.1664)
+Train Total Loss: 0.4292 (Det: 0.2613, Desc: 0.1679)
 --- Phase 1+: Hybrid PKE Registration (Epoch 44/500) ---
-Train Total Loss: 0.4319 (Det: 0.2639, Desc: 0.1679)
+Train Total Loss: 0.4248 (Det: 0.2596, Desc: 0.1652)
 --- Phase 1+: Hybrid PKE Registration (Epoch 45/500) ---
-Train Total Loss: 0.4260 (Det: 0.2614, Desc: 0.1646)
-New Best AUC: 0.1071 (Previous: 0.0769)
+Train Total Loss: 0.4253 (Det: 0.2600, Desc: 0.1653)
+New Best AUC: 0.0459 (Previous: 0.0362)
 --- Phase 1+: Hybrid PKE Registration (Epoch 46/500) ---
-Train Total Loss: 0.4233 (Det: 0.2584, Desc: 0.1649)
+Train Total Loss: 0.4276 (Det: 0.2579, Desc: 0.1697)
 --- Phase 1+: Hybrid PKE Registration (Epoch 47/500) ---
-Train Total Loss: 0.4257 (Det: 0.2598, Desc: 0.1659)
+Train Total Loss: 0.4238 (Det: 0.2578, Desc: 0.1660)
 --- Phase 1+: Hybrid PKE Registration (Epoch 48/500) ---
-Train Total Loss: 0.4226 (Det: 0.2585, Desc: 0.1641)
+Train Total Loss: 0.4229 (Det: 0.2574, Desc: 0.1655)
 --- Phase 1+: Hybrid PKE Registration (Epoch 49/500) ---
-Train Total Loss: 0.4174 (Det: 0.2552, Desc: 0.1622)
+Train Total Loss: 0.4217 (Det: 0.2556, Desc: 0.1661)
 --- Phase 1+: Hybrid PKE Registration (Epoch 50/500) ---
-Train Total Loss: 0.4201 (Det: 0.2572, Desc: 0.1629)
+Train Total Loss: 0.4155 (Det: 0.2524, Desc: 0.1632)
+New Best AUC: 0.0570 (Previous: 0.0459)
 --- Phase 1+: Hybrid PKE Registration (Epoch 51/500) ---
-Train Total Loss: 0.4131 (Det: 0.2518, Desc: 0.1613)
+Train Total Loss: 0.4187 (Det: 0.2530, Desc: 0.1656)
 --- Phase 1+: Hybrid PKE Registration (Epoch 52/500) ---
-Train Total Loss: 0.4147 (Det: 0.2525, Desc: 0.1622)
+Train Total Loss: 0.4175 (Det: 0.2537, Desc: 0.1638)
 --- Phase 1+: Hybrid PKE Registration (Epoch 53/500) ---
-Train Total Loss: 0.4187 (Det: 0.2533, Desc: 0.1654)
+Train Total Loss: 0.4133 (Det: 0.2508, Desc: 0.1626)
 --- Phase 1+: Hybrid PKE Registration (Epoch 54/500) ---
-Train Total Loss: 0.4155 (Det: 0.2521, Desc: 0.1634)
+Train Total Loss: 0.4151 (Det: 0.2516, Desc: 0.1635)
 --- Phase 1+: Hybrid PKE Registration (Epoch 55/500) ---
-Train Total Loss: 0.4133 (Det: 0.2520, Desc: 0.1613)
+Train Total Loss: 0.4143 (Det: 0.2512, Desc: 0.1632)
+New Best AUC: 0.0579 (Previous: 0.0570)
 --- Phase 1+: Hybrid PKE Registration (Epoch 56/500) ---
-Train Total Loss: 0.4110 (Det: 0.2495, Desc: 0.1615)
+Train Total Loss: 0.4135 (Det: 0.2486, Desc: 0.1649)
 --- Phase 1+: Hybrid PKE Registration (Epoch 57/500) ---
-Train Total Loss: 0.4088 (Det: 0.2475, Desc: 0.1614)
+Train Total Loss: 0.4087 (Det: 0.2475, Desc: 0.1613)
 --- Phase 1+: Hybrid PKE Registration (Epoch 58/500) ---
-Train Total Loss: 0.4115 (Det: 0.2495, Desc: 0.1620)
+Train Total Loss: 0.4142 (Det: 0.2505, Desc: 0.1637)
 --- Phase 1+: Hybrid PKE Registration (Epoch 59/500) ---
-Train Total Loss: 0.4102 (Det: 0.2493, Desc: 0.1609)
+Train Total Loss: 0.4092 (Det: 0.2481, Desc: 0.1610)
 --- Phase 1+: Hybrid PKE Registration (Epoch 60/500) ---
-Train Total Loss: 0.4089 (Det: 0.2496, Desc: 0.1593)
+Train Total Loss: 0.4088 (Det: 0.2474, Desc: 0.1614)
 --- Phase 1+: Hybrid PKE Registration (Epoch 61/500) ---
-Train Total Loss: 0.4080 (Det: 0.2470, Desc: 0.1611)
+Train Total Loss: 0.4081 (Det: 0.2465, Desc: 0.1615)
 --- Phase 1+: Hybrid PKE Registration (Epoch 62/500) ---
-Train Total Loss: 0.4064 (Det: 0.2467, Desc: 0.1597)
+Train Total Loss: 0.4095 (Det: 0.2484, Desc: 0.1611)
 --- Phase 1+: Hybrid PKE Registration (Epoch 63/500) ---
-Train Total Loss: 0.4075 (Det: 0.2475, Desc: 0.1600)
+Train Total Loss: 0.4094 (Det: 0.2461, Desc: 0.1634)
 --- Phase 1+: Hybrid PKE Registration (Epoch 64/500) ---
-Train Total Loss: 0.4048 (Det: 0.2457, Desc: 0.1591)
+Train Total Loss: 0.4060 (Det: 0.2455, Desc: 0.1605)
 --- Phase 1+: Hybrid PKE Registration (Epoch 65/500) ---
-Train Total Loss: 0.4034 (Det: 0.2451, Desc: 0.1583)
+Train Total Loss: 0.4058 (Det: 0.2431, Desc: 0.1627)
 --- Phase 1+: Hybrid PKE Registration (Epoch 66/500) ---
-Train Total Loss: 0.4017 (Det: 0.2425, Desc: 0.1592)
+Train Total Loss: 0.4010 (Det: 0.2424, Desc: 0.1586)
 --- Phase 1+: Hybrid PKE Registration (Epoch 67/500) ---
-Train Total Loss: 0.4079 (Det: 0.2470, Desc: 0.1610)
+Train Total Loss: 0.4053 (Det: 0.2452, Desc: 0.1601)
 --- Phase 1+: Hybrid PKE Registration (Epoch 68/500) ---
-Train Total Loss: 0.4003 (Det: 0.2423, Desc: 0.1581)
+Train Total Loss: 0.4018 (Det: 0.2440, Desc: 0.1578)
 --- Phase 1+: Hybrid PKE Registration (Epoch 69/500) ---
-Train Total Loss: 0.4024 (Det: 0.2422, Desc: 0.1601)
+Train Total Loss: 0.4061 (Det: 0.2455, Desc: 0.1606)
 --- Phase 1+: Hybrid PKE Registration (Epoch 70/500) ---
-Train Total Loss: 0.3998 (Det: 0.2420, Desc: 0.1578)
+Train Total Loss: 0.4034 (Det: 0.2432, Desc: 0.1602)
 --- Phase 1+: Hybrid PKE Registration (Epoch 71/500) ---
-Train Total Loss: 0.4032 (Det: 0.2439, Desc: 0.1593)
+Train Total Loss: 0.4020 (Det: 0.2420, Desc: 0.1600)
 --- Phase 1+: Hybrid PKE Registration (Epoch 72/500) ---
-Train Total Loss: 0.4040 (Det: 0.2449, Desc: 0.1591)
+Train Total Loss: 0.3983 (Det: 0.2416, Desc: 0.1566)
 --- Phase 1+: Hybrid PKE Registration (Epoch 73/500) ---
-Train Total Loss: 0.4010 (Det: 0.2438, Desc: 0.1572)
+Train Total Loss: 0.4022 (Det: 0.2428, Desc: 0.1594)
 --- Phase 1+: Hybrid PKE Registration (Epoch 74/500) ---
-Train Total Loss: 0.4015 (Det: 0.2428, Desc: 0.1587)
+Train Total Loss: 0.4012 (Det: 0.2418, Desc: 0.1594)
 --- Phase 1+: Hybrid PKE Registration (Epoch 75/500) ---
-Train Total Loss: 0.3971 (Det: 0.2409, Desc: 0.1563)
+Train Total Loss: 0.4027 (Det: 0.2431, Desc: 0.1595)
 --- Phase 1+: Hybrid PKE Registration (Epoch 76/500) ---
-Train Total Loss: 0.3977 (Det: 0.2395, Desc: 0.1582)
+Train Total Loss: 0.4036 (Det: 0.2433, Desc: 0.1603)
 --- Phase 1+: Hybrid PKE Registration (Epoch 77/500) ---
-Train Total Loss: 0.3993 (Det: 0.2420, Desc: 0.1573)
+Train Total Loss: 0.3964 (Det: 0.2375, Desc: 0.1589)
 --- Phase 1+: Hybrid PKE Registration (Epoch 78/500) ---
-Train Total Loss: 0.3931 (Det: 0.2382, Desc: 0.1549)
+Train Total Loss: 0.3999 (Det: 0.2423, Desc: 0.1576)
 --- Phase 1+: Hybrid PKE Registration (Epoch 79/500) ---
-Train Total Loss: 0.3951 (Det: 0.2402, Desc: 0.1549)
+Train Total Loss: 0.3977 (Det: 0.2387, Desc: 0.1590)
 --- Phase 1+: Hybrid PKE Registration (Epoch 80/500) ---
-Train Total Loss: 0.3961 (Det: 0.2395, Desc: 0.1566)
+Train Total Loss: 0.3978 (Det: 0.2396, Desc: 0.1582)
 --- Phase 1+: Hybrid PKE Registration (Epoch 81/500) ---
-Train Total Loss: 0.3984 (Det: 0.2413, Desc: 0.1570)
+Train Total Loss: 0.3988 (Det: 0.2406, Desc: 0.1582)
 --- Phase 1+: Hybrid PKE Registration (Epoch 82/500) ---
-Train Total Loss: 0.3965 (Det: 0.2399, Desc: 0.1566)
+Train Total Loss: 0.3959 (Det: 0.2387, Desc: 0.1573)
 --- Phase 1+: Hybrid PKE Registration (Epoch 83/500) ---
-Train Total Loss: 0.3932 (Det: 0.2377, Desc: 0.1555)
+Train Total Loss: 0.3961 (Det: 0.2379, Desc: 0.1583)
 --- Phase 1+: Hybrid PKE Registration (Epoch 84/500) ---
-Train Total Loss: 0.3930 (Det: 0.2383, Desc: 0.1547)
---- Phase 1+: Hybrid PKE Registration (Epoch 85/500) ---
-Train Total Loss: 0.3939 (Det: 0.2376, Desc: 0.1563)
---- Phase 1+: Hybrid PKE Registration (Epoch 86/500) ---
-Train Total Loss: 0.3929 (Det: 0.2375, Desc: 0.1553)
---- Phase 1+: Hybrid PKE Registration (Epoch 87/500) ---
-Train Total Loss: 0.3942 (Det: 0.2376, Desc: 0.1565)
---- Phase 1+: Hybrid PKE Registration (Epoch 88/500) ---
-Train Total Loss: 0.3925 (Det: 0.2387, Desc: 0.1538)
---- Phase 1+: Hybrid PKE Registration (Epoch 89/500) ---
-Train Total Loss: 0.3923 (Det: 0.2385, Desc: 0.1537)
---- Phase 1+: Hybrid PKE Registration (Epoch 90/500) ---
-Train Total Loss: 0.3922 (Det: 0.2371, Desc: 0.1550)
---- Phase 1+: Hybrid PKE Registration (Epoch 91/500) ---
-Train Total Loss: 0.3911 (Det: 0.2365, Desc: 0.1545)
---- Phase 1+: Hybrid PKE Registration (Epoch 92/500) ---
-Train Total Loss: 0.3899 (Det: 0.2366, Desc: 0.1534)
---- Phase 1+: Hybrid PKE Registration (Epoch 93/500) ---
-Train Total Loss: 0.3907 (Det: 0.2359, Desc: 0.1548)
---- Phase 1+: Hybrid PKE Registration (Epoch 94/500) ---
-Train Total Loss: 0.3901 (Det: 0.2368, Desc: 0.1534)
---- Phase 1+: Hybrid PKE Registration (Epoch 95/500) ---
-Train Total Loss: 0.3902 (Det: 0.2357, Desc: 0.1545)
---- Phase 1+: Hybrid PKE Registration (Epoch 96/500) ---
-Train Total Loss: 0.3889 (Det: 0.2356, Desc: 0.1533)
---- Phase 1+: Hybrid PKE Registration (Epoch 97/500) ---
-Train Total Loss: 0.3894 (Det: 0.2360, Desc: 0.1534)
---- Phase 1+: Hybrid PKE Registration (Epoch 98/500) ---
-Train Total Loss: 0.3881 (Det: 0.2361, Desc: 0.1520)
---- Phase 1+: Hybrid PKE Registration (Epoch 99/500) ---
-Train Total Loss: 0.3933 (Det: 0.2372, Desc: 0.1561)
---- Phase 1+: Hybrid PKE Registration (Epoch 100/500) ---
-Train Total Loss: 0.3929 (Det: 0.2385, Desc: 0.1544)
-[Early Stopping] Validation AUC improved to 0.0578. Reset patience counter.
---- Phase 1+: Hybrid PKE Registration (Epoch 101/500) ---
-Train Total Loss: 0.3872 (Det: 0.2335, Desc: 0.1537)
---- Phase 1+: Hybrid PKE Registration (Epoch 102/500) ---
-Train Total Loss: 0.3861 (Det: 0.2329, Desc: 0.1532)
---- Phase 1+: Hybrid PKE Registration (Epoch 103/500) ---
-Train Total Loss: 0.3921 (Det: 0.2373, Desc: 0.1548)
---- Phase 1+: Hybrid PKE Registration (Epoch 104/500) ---
-Train Total Loss: 0.3877 (Det: 0.2362, Desc: 0.1515)
---- Phase 1+: Hybrid PKE Registration (Epoch 105/500) ---
-Train Total Loss: 0.3905 (Det: 0.2345, Desc: 0.1560)
-[Early Stopping] Validation AUC did not improve. Patience: 1/5
---- Phase 1+: Hybrid PKE Registration (Epoch 106/500) ---
-Train Total Loss: 0.3849 (Det: 0.2324, Desc: 0.1526)
---- Phase 1+: Hybrid PKE Registration (Epoch 107/500) ---
-Train Total Loss: 0.3864 (Det: 0.2341, Desc: 0.1522)
---- Phase 1+: Hybrid PKE Registration (Epoch 108/500) ---
-Train Total Loss: 0.3865 (Det: 0.2348, Desc: 0.1516)
---- Phase 1+: Hybrid PKE Registration (Epoch 109/500) ---
-Train Total Loss: 0.3860 (Det: 0.2338, Desc: 0.1522)
---- Phase 1+: Hybrid PKE Registration (Epoch 110/500) ---
-Train Total Loss: 0.3865 (Det: 0.2339, Desc: 0.1526)
-[Early Stopping] Validation AUC improved to 0.0717. Reset patience counter.
---- Phase 1+: Hybrid PKE Registration (Epoch 111/500) ---
-Train Total Loss: 0.3861 (Det: 0.2332, Desc: 0.1528)
---- Phase 1+: Hybrid PKE Registration (Epoch 112/500) ---
-Train Total Loss: 0.3855 (Det: 0.2335, Desc: 0.1520)
---- Phase 1+: Hybrid PKE Registration (Epoch 113/500) ---
-Train Total Loss: 0.3855 (Det: 0.2338, Desc: 0.1518)
---- Phase 1+: Hybrid PKE Registration (Epoch 114/500) ---
-Train Total Loss: 0.3828 (Det: 0.2337, Desc: 0.1491)
---- Phase 1+: Hybrid PKE Registration (Epoch 115/500) ---
-Train Total Loss: 0.3835 (Det: 0.2321, Desc: 0.1514)
-[Early Stopping] Validation AUC did not improve. Patience: 1/5
---- Phase 1+: Hybrid PKE Registration (Epoch 116/500) ---
-Train Total Loss: 0.3865 (Det: 0.2333, Desc: 0.1532)
---- Phase 1+: Hybrid PKE Registration (Epoch 117/500) ---
-Train Total Loss: 0.3846 (Det: 0.2327, Desc: 0.1519)
---- Phase 1+: Hybrid PKE Registration (Epoch 118/500) ---
-Train Total Loss: 0.3806 (Det: 0.2304, Desc: 0.1503)
---- Phase 1+: Hybrid PKE Registration (Epoch 119/500) ---
-Train Total Loss: 0.3839 (Det: 0.2311, Desc: 0.1528)
---- Phase 1+: Hybrid PKE Registration (Epoch 120/500) ---
-Train Total Loss: 0.3839 (Det: 0.2309, Desc: 0.1530)
-[Early Stopping] Validation AUC did not improve. Patience: 2/5
---- Phase 1+: Hybrid PKE Registration (Epoch 121/500) ---
-Train Total Loss: 0.3821 (Det: 0.2299, Desc: 0.1523)
---- Phase 1+: Hybrid PKE Registration (Epoch 122/500) ---
-Train Total Loss: 0.3815 (Det: 0.2316, Desc: 0.1499)
---- Phase 1+: Hybrid PKE Registration (Epoch 123/500) ---
-Train Total Loss: 0.3840 (Det: 0.2324, Desc: 0.1516)
---- Phase 1+: Hybrid PKE Registration (Epoch 124/500) ---
-Train Total Loss: 0.3839 (Det: 0.2328, Desc: 0.1511)
---- Phase 1+: Hybrid PKE Registration (Epoch 125/500) ---
-Train Total Loss: 0.3742 (Det: 0.2261, Desc: 0.1482)
-[Early Stopping] Validation AUC improved to 0.0990. Reset patience counter.
---- Phase 1+: Hybrid PKE Registration (Epoch 126/500) ---
-Train Total Loss: 0.3819 (Det: 0.2301, Desc: 0.1518)
---- Phase 1+: Hybrid PKE Registration (Epoch 127/500) ---
-Train Total Loss: 0.3843 (Det: 0.2322, Desc: 0.1521)
---- Phase 1+: Hybrid PKE Registration (Epoch 128/500) ---
-Train Total Loss: 0.3840 (Det: 0.2315, Desc: 0.1526)
---- Phase 1+: Hybrid PKE Registration (Epoch 129/500) ---
-Train Total Loss: 0.3808 (Det: 0.2301, Desc: 0.1506)
---- Phase 1+: Hybrid PKE Registration (Epoch 130/500) ---
-Train Total Loss: 0.3796 (Det: 0.2305, Desc: 0.1491)
-[Early Stopping] Validation AUC did not improve. Patience: 1/5
---- Phase 1+: Hybrid PKE Registration (Epoch 131/500) ---
-Train Total Loss: 0.3777 (Det: 0.2286, Desc: 0.1490)
---- Phase 1+: Hybrid PKE Registration (Epoch 132/500) ---
-Train Total Loss: 0.3784 (Det: 0.2285, Desc: 0.1499)
---- Phase 1+: Hybrid PKE Registration (Epoch 133/500) ---
-Train Total Loss: 0.3825 (Det: 0.2316, Desc: 0.1510)
---- Phase 1+: Hybrid PKE Registration (Epoch 134/500) ---
-Train Total Loss: 0.3835 (Det: 0.2305, Desc: 0.1531)
---- Phase 1+: Hybrid PKE Registration (Epoch 135/500) ---
-Train Total Loss: 0.3810 (Det: 0.2302, Desc: 0.1508)
-[Early Stopping] Validation AUC did not improve. Patience: 2/5
---- Phase 1+: Hybrid PKE Registration (Epoch 136/500) ---
-Train Total Loss: 0.3775 (Det: 0.2292, Desc: 0.1483)
---- Phase 1+: Hybrid PKE Registration (Epoch 137/500) ---
-Train Total Loss: 0.3771 (Det: 0.2282, Desc: 0.1489)
---- Phase 1+: Hybrid PKE Registration (Epoch 138/500) ---
-Train Total Loss: 0.3782 (Det: 0.2275, Desc: 0.1507)
---- Phase 1+: Hybrid PKE Registration (Epoch 139/500) ---
-Train Total Loss: 0.3771 (Det: 0.2288, Desc: 0.1483)
---- Phase 1+: Hybrid PKE Registration (Epoch 140/500) ---
-Train Total Loss: 0.3778 (Det: 0.2273, Desc: 0.1505)
-[Early Stopping] Validation AUC did not improve. Patience: 3/5
---- Phase 1+: Hybrid PKE Registration (Epoch 141/500) ---
-Train Total Loss: 0.3818 (Det: 0.2313, Desc: 0.1505)
---- Phase 1+: Hybrid PKE Registration (Epoch 142/500) ---
-Train Total Loss: 0.3799 (Det: 0.2294, Desc: 0.1504)
---- Phase 1+: Hybrid PKE Registration (Epoch 143/500) ---
-Train Total Loss: 0.3766 (Det: 0.2283, Desc: 0.1483)
---- Phase 1+: Hybrid PKE Registration (Epoch 144/500) ---
-Train Total Loss: 0.3774 (Det: 0.2292, Desc: 0.1482)
---- Phase 1+: Hybrid PKE Registration (Epoch 145/500) ---
-Train Total Loss: 0.3774 (Det: 0.2276, Desc: 0.1499)
-[Early Stopping] Validation AUC did not improve. Patience: 4/5
---- Phase 1+: Hybrid PKE Registration (Epoch 146/500) ---
-Train Total Loss: 0.3769 (Det: 0.2288, Desc: 0.1481)
---- Phase 1+: Hybrid PKE Registration (Epoch 147/500) ---
-Train Total Loss: 0.3747 (Det: 0.2272, Desc: 0.1475)
---- Phase 1+: Hybrid PKE Registration (Epoch 148/500) ---
-Train Total Loss: 0.3758 (Det: 0.2278, Desc: 0.1480)
---- Phase 1+: Hybrid PKE Registration (Epoch 149/500) ---
-Train Total Loss: 0.3805 (Det: 0.2299, Desc: 0.1506)
---- Phase 1+: Hybrid PKE Registration (Epoch 150/500) ---
-Train Total Loss: 0.3752 (Det: 0.2274, Desc: 0.1478)
-[Early Stopping] Validation AUC did not improve. Patience: 5/5
