@@ -217,16 +217,32 @@ def validate(model, val_dataset, device, epoch, save_dir, log_file, train_config
             det_mov_masked = det_mov * valid_mask
             
             # 提取关键点 - 优化策略: 低阈值 NMS + 强制 Top-K
-            # 1. 使用极低阈值进行 NMS，保证局部极值被保留 (防止扎堆)，但不因阈值过高而漏掉暗点
-            nms_ret = nms(det_fix, nms_thresh=1e-6, nms_size=5) # 几乎保留所有局部峰值
-            kps_fix = nms_ret[0]
-            scores_fix = nms_ret[1]
+            # 1. 使用极低阈值进行 NMS
+            kps_fix_list = nms(det_fix, nms_thresh=1e-6, nms_size=5) 
+            kps_fix = kps_fix_list[0] # (N, 2) in (x, y) format
             
-            nms_ret_mov = nms(det_mov_masked, nms_thresh=1e-6, nms_size=5)
-            kps_mov = nms_ret_mov[0]
-            scores_mov = nms_ret_mov[1]
+            # 手动获取分数 (nms只返回了坐标)
+            # kps_fix is (x, y), det_fix is (B, C, H, W)
+            # need (y, x) for indexing
+            if len(kps_fix) > 0:
+                y = kps_fix[:, 1].long()
+                x = kps_fix[:, 0].long()
+                scores_fix = det_fix[0, 0, y, x]
+            else:
+                scores_fix = torch.tensor([], device=device)
             
-            # 2. 强制 Top-K 截断 (例如取前 300 个点)，保证有足够的点进行 RANSAC
+            kps_mov_list = nms(det_mov_masked, nms_thresh=1e-6, nms_size=5)
+            kps_mov = kps_mov_list[0]
+            
+            # 手动获取分数
+            if len(kps_mov) > 0:
+                y_m = kps_mov[:, 1].long()
+                x_m = kps_mov[:, 0].long()
+                scores_mov = det_mov_masked[0, 0, y_m, x_m]
+            else:
+                scores_mov = torch.tensor([], device=device)
+            
+            # 2. 强制 Top-K 截断 (例如取前 300 个点)
             target_k = 300
             
             if len(kps_fix) > target_k:
