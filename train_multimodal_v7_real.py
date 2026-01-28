@@ -307,7 +307,7 @@ def train_real_v6():
     config['MODEL']['name'] = args.name
     config['DATASET']['registration_type'] = args.mode
     config['MODEL']['shared_encoder'] = False 
-    if args.content_thresh: config['MODEL']['content_thresh'] = args.content_thresh
+    if args.content_thresh: config['PKE']['content_thresh'] = args.content_thresh
     if args.nms_thresh: config['MODEL']['nms_thresh'] = args.nms_thresh
     
     train_config = {**config['MODEL'], **config['PKE'], **config['DATASET'], **config['VALUE_MAP']}
