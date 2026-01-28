@@ -510,3 +510,483 @@ AUC@10:          0.0358
 AUC@20:          0.1148
 Avg AUC@5-20:    0.0516
 Overall MACE:    395.89 px
+
+--- Validation Epoch 80 ---
+ID: 049_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 468.05 px
+ID: 024_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 16.55 px
+ID: 023_01 | Status: inaccurate | MEE: 620.46 | MAE: 1769.76 | MACE: 545.57 px
+ID: 063_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 351.54 px
+ID: 067_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 450.00 px
+ID: 003_01 | Status: inaccurate | MEE: 212.25 | MAE: 750.50 | MACE: 170.53 px
+ID: 041_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 247.28 px
+ID: 054_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 301.94 px
+ID: 008_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 184.07 px
+ID: 051_01 | Status: inaccurate | MEE: 16.09 | MAE: 58.69 | MACE: 8.20 px
+ID: 062_01 | Status: inaccurate | MEE: 336.37 | MAE: 15618.74 | MACE: 1109.53 px
+ID: 010_01 | Status: inaccurate | MEE: 18.86 | MAE: 69.64 | MACE: 288.06 px
+ID: 018_01 | Status: acceptable | MEE: 16.69 | MAE: 44.41 | MACE: 19.58 px
+ID: 024_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 184.16 px
+ID: 025_01 | Status: inaccurate | MEE: 446.82 | MAE: 1549.83 | MACE: 107.83 px
+ID: 026_01 | Status: inaccurate | MEE: 103.35 | MAE: 203.12 | MACE: 760.68 px
+ID: 065_01 | Status: inaccurate | MEE: 43.56 | MAE: 167.84 | MACE: 780.13 px
+ID: 003_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 492.08 px
+ID: 012_01 | Status: inaccurate | MEE: 40.58 | MAE: 81.20 | MACE: 15.94 px
+ID: 058_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 448.98 px
+
+--- Validation Summary (SuperRetina Paper Aligned) ---
+Acceptable Rate: 5.00%
+Inaccurate Rate: 45.00%
+Failed Rate:     50.00%
+AUC@5:           0.0054
+AUC@10:          0.0318
+AUC@20:          0.1199
+Avg AUC@5-20:    0.0524
+Overall MACE:    347.53 px
+
+--- Validation Epoch 85 ---
+ID: 049_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 468.05 px
+ID: 024_01 | Status: inaccurate | MEE: 165.88 | MAE: 367.02 | MACE: 88.13 px
+ID: 023_01 | Status: inaccurate | MEE: 46.32 | MAE: 198.78 | MACE: 734.81 px
+ID: 063_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 351.54 px
+ID: 067_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 450.00 px
+ID: 003_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 185.81 px
+ID: 041_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 247.28 px
+ID: 054_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 301.94 px
+ID: 008_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 184.07 px
+ID: 051_01 | Status: acceptable | MEE: 6.58 | MAE: 18.85 | MACE: 22.21 px
+ID: 062_01 | Status: inaccurate | MEE: 109.55 | MAE: 749.68 | MACE: 94.90 px
+ID: 010_01 | Status: inaccurate | MEE: 88.80 | MAE: 283.99 | MACE: 16.91 px
+ID: 018_01 | Status: inaccurate | MEE: 36.03 | MAE: 255.42 | MACE: 1555.28 px
+ID: 024_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 184.16 px
+ID: 025_01 | Status: inaccurate | MEE: 17.51 | MAE: 205.10 | MACE: 88.26 px
+ID: 026_01 | Status: inaccurate | MEE: 43.52 | MAE: 86.38 | MACE: 124.13 px
+ID: 065_01 | Status: inaccurate | MEE: 1098.85 | MAE: 1853.68 | MACE: 550.34 px
+ID: 003_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 492.08 px
+ID: 012_01 | Status: inaccurate | MEE: 16.65 | MAE: 52.36 | MACE: 6.05 px
+ID: 058_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 448.98 px
+
+--- Validation Summary (SuperRetina Paper Aligned) ---
+Acceptable Rate: 5.00%
+Inaccurate Rate: 45.00%
+Failed Rate:     50.00%
+AUC@5:           0.0273
+AUC@10:          0.0875
+AUC@20:          0.1659
+Avg AUC@5-20:    0.0935
+Overall MACE:    329.75 px
+
+--- Validation Epoch 90 ---
+ID: 049_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 468.05 px
+ID: 024_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 16.55 px
+ID: 023_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 30.24 px
+ID: 063_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 351.54 px
+ID: 067_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 450.00 px
+ID: 003_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 185.81 px
+ID: 041_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 247.28 px
+ID: 054_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 301.94 px
+ID: 008_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 184.07 px
+ID: 051_01 | Status: inaccurate | MEE: 15.70 | MAE: 56.60 | MACE: 24.57 px
+ID: 062_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 48.87 px
+ID: 010_01 | Status: inaccurate | MEE: 357.94 | MAE: 3417.35 | MACE: 44.26 px
+ID: 018_01 | Status: inaccurate | MEE: 28.91 | MAE: 129.91 | MACE: 41.50 px
+ID: 024_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 184.16 px
+ID: 025_01 | Status: inaccurate | MEE: 64.95 | MAE: 171.13 | MACE: 203.79 px
+ID: 026_01 | Status: inaccurate | MEE: 28.71 | MAE: 53.24 | MACE: 49.67 px
+ID: 065_01 | Status: inaccurate | MEE: 1085.15 | MAE: 1666.67 | MACE: 568.73 px
+ID: 003_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 492.08 px
+ID: 012_01 | Status: inaccurate | MEE: 479.59 | MAE: 4739.77 | MACE: 22.95 px
+ID: 058_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 448.98 px
+
+--- Validation Summary (SuperRetina Paper Aligned) ---
+Acceptable Rate: 0.00%
+Inaccurate Rate: 35.00%
+Failed Rate:     65.00%
+AUC@5:           0.0059
+AUC@10:          0.0267
+AUC@20:          0.0864
+Avg AUC@5-20:    0.0397
+Overall MACE:    218.25 px
+
+--- Validation Epoch 95 ---
+ID: 049_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 468.05 px
+ID: 024_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 16.55 px
+ID: 023_01 | Status: inaccurate | MEE: 3784.33 | MAE: 32022.19 | MACE: 1644.99 px
+ID: 063_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 351.54 px
+ID: 067_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 450.00 px
+ID: 003_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 185.81 px
+ID: 041_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 247.28 px
+ID: 054_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 301.94 px
+ID: 008_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 184.07 px
+ID: 051_01 | Status: acceptable | MEE: 13.16 | MAE: 23.15 | MACE: 33.27 px
+ID: 062_01 | Status: inaccurate | MEE: 420.02 | MAE: 951.07 | MACE: 746.75 px
+ID: 010_01 | Status: inaccurate | MEE: 23.31 | MAE: 53.80 | MACE: 25.56 px
+ID: 018_01 | Status: inaccurate | MEE: 92.16 | MAE: 281.24 | MACE: 138.13 px
+ID: 024_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 184.16 px
+ID: 025_01 | Status: inaccurate | MEE: 70.77 | MAE: 300.29 | MACE: 101.15 px
+ID: 026_01 | Status: inaccurate | MEE: 29.79 | MAE: 59.69 | MACE: 167.78 px
+ID: 065_01 | Status: inaccurate | MEE: 904.11 | MAE: 1557.52 | MACE: 507.81 px
+ID: 003_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 492.08 px
+ID: 012_01 | Status: acceptable | MEE: 13.86 | MAE: 31.75 | MACE: 105.44 px
+ID: 058_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 448.98 px
+
+--- Validation Summary (SuperRetina Paper Aligned) ---
+Acceptable Rate: 10.00%
+Inaccurate Rate: 35.00%
+Failed Rate:     55.00%
+AUC@5:           0.0104
+AUC@10:          0.0462
+AUC@20:          0.1231
+Avg AUC@5-20:    0.0599
+Overall MACE:    340.07 px
+
+--- Validation Epoch 100 ---
+ID: 049_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 468.05 px
+ID: 024_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 16.55 px
+ID: 023_01 | Status: inaccurate | MEE: 1037.60 | MAE: 2046.37 | MACE: 625.25 px
+ID: 063_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 351.54 px
+ID: 067_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 450.00 px
+ID: 003_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 185.81 px
+ID: 041_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 247.28 px
+ID: 054_01 | Status: inaccurate | MEE: 912.84 | MAE: 1447.21 | MACE: 568.46 px
+ID: 008_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 184.07 px
+ID: 051_01 | Status: acceptable | MEE: 12.19 | MAE: 19.15 | MACE: 33.57 px
+ID: 062_01 | Status: inaccurate | MEE: 1329.76 | MAE: 2234.33 | MACE: 984.26 px
+ID: 010_01 | Status: inaccurate | MEE: 103.70 | MAE: 319.57 | MACE: 90.50 px
+ID: 018_01 | Status: inaccurate | MEE: 21.85 | MAE: 64.14 | MACE: 20.76 px
+ID: 024_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 184.16 px
+ID: 025_01 | Status: inaccurate | MEE: 200.56 | MAE: 662.37 | MACE: 484.26 px
+ID: 026_01 | Status: inaccurate | MEE: 50.75 | MAE: 95.93 | MACE: 564.29 px
+ID: 065_01 | Status: inaccurate | MEE: 224.48 | MAE: 1222.19 | MACE: 323.22 px
+ID: 003_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 492.08 px
+ID: 012_01 | Status: inaccurate | MEE: 26.70 | MAE: 66.04 | MACE: 15.50 px
+ID: 058_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 448.98 px
+
+--- Validation Summary (SuperRetina Paper Aligned) ---
+Acceptable Rate: 5.00%
+Inaccurate Rate: 45.00%
+Failed Rate:     50.00%
+AUC@5:           0.0171
+AUC@10:          0.0456
+AUC@20:          0.1108
+Avg AUC@5-20:    0.0578
+Overall MACE:    336.93 px
+
+--- Validation Epoch 105 ---
+ID: 049_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 468.05 px
+ID: 024_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 16.55 px
+ID: 023_01 | Status: inaccurate | MEE: 609.66 | MAE: 1320.57 | MACE: 432.42 px
+ID: 063_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 351.54 px
+ID: 067_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 450.00 px
+ID: 003_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 185.81 px
+ID: 041_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 247.28 px
+ID: 054_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 301.94 px
+ID: 008_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 184.07 px
+ID: 051_01 | Status: acceptable | MEE: 14.77 | MAE: 27.95 | MACE: 20.03 px
+ID: 062_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 48.87 px
+ID: 010_01 | Status: inaccurate | MEE: 23.31 | MAE: 79.55 | MACE: 189.02 px
+ID: 018_01 | Status: inaccurate | MEE: 34.55 | MAE: 77.30 | MACE: 50.67 px
+ID: 024_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 184.16 px
+ID: 025_01 | Status: acceptable | MEE: 14.83 | MAE: 32.68 | MACE: 83.92 px
+ID: 026_01 | Status: inaccurate | MEE: 514.00 | MAE: 28589.91 | MACE: 36.23 px
+ID: 065_01 | Status: inaccurate | MEE: 1040.00 | MAE: 18662.40 | MACE: 453.05 px
+ID: 003_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 492.08 px
+ID: 012_01 | Status: inaccurate | MEE: 45.74 | MAE: 131.62 | MACE: 25.58 px
+ID: 058_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 448.98 px
+
+--- Validation Summary (SuperRetina Paper Aligned) ---
+Acceptable Rate: 10.00%
+Inaccurate Rate: 30.00%
+Failed Rate:     60.00%
+AUC@5:           0.0020
+AUC@10:          0.0340
+AUC@20:          0.1368
+Avg AUC@5-20:    0.0576
+Overall MACE:    233.51 px
+
+--- Validation Epoch 110 ---
+ID: 049_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 468.05 px
+ID: 024_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 16.55 px
+ID: 023_01 | Status: inaccurate | MEE: 800.56 | MAE: 1867.23 | MACE: 475.19 px
+ID: 063_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 351.54 px
+ID: 067_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 450.00 px
+ID: 003_01 | Status: inaccurate | MEE: 1347.15 | MAE: 1821.72 | MACE: 382.39 px
+ID: 041_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 247.28 px
+ID: 054_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 301.94 px
+ID: 008_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 184.07 px
+ID: 051_01 | Status: acceptable | MEE: 6.37 | MAE: 33.51 | MACE: 10.90 px
+ID: 062_01 | Status: inaccurate | MEE: 1370.40 | MAE: 101458.65 | MACE: 54.48 px
+ID: 010_01 | Status: acceptable | MEE: 16.38 | MAE: 37.83 | MACE: 36.55 px
+ID: 018_01 | Status: inaccurate | MEE: 47.04 | MAE: 184.02 | MACE: 30.58 px
+ID: 024_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 184.16 px
+ID: 025_01 | Status: inaccurate | MEE: 21.44 | MAE: 66.15 | MACE: 4116.17 px
+ID: 026_01 | Status: inaccurate | MEE: 25.92 | MAE: 79.04 | MACE: 102.18 px
+ID: 065_01 | Status: inaccurate | MEE: 1174.00 | MAE: 1684.37 | MACE: 567.15 px
+ID: 003_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 492.08 px
+ID: 012_01 | Status: acceptable | MEE: 12.17 | MAE: 17.64 | MACE: 5.24 px
+ID: 058_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 448.98 px
+
+--- Validation Summary (SuperRetina Paper Aligned) ---
+Acceptable Rate: 15.00%
+Inaccurate Rate: 35.00%
+Failed Rate:     50.00%
+AUC@5:           0.0083
+AUC@10:          0.0554
+AUC@20:          0.1515
+Avg AUC@5-20:    0.0717
+Overall MACE:    446.27 px
+
+--- Validation Epoch 115 ---
+ID: 049_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 468.05 px
+ID: 024_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 16.55 px
+ID: 023_01 | Status: inaccurate | MEE: 2659.73 | MAE: 43300.88 | MACE: 2198.48 px
+ID: 063_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 351.54 px
+ID: 067_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 450.00 px
+ID: 003_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 185.81 px
+ID: 041_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 247.28 px
+ID: 054_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 301.94 px
+ID: 008_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 184.07 px
+ID: 051_01 | Status: inaccurate | MEE: 23.32 | MAE: 102.26 | MACE: 14.38 px
+ID: 062_01 | Status: inaccurate | MEE: 1320.90 | MAE: 3136.02 | MACE: 1062.22 px
+ID: 010_01 | Status: acceptable | MEE: 9.20 | MAE: 22.25 | MACE: 4.61 px
+ID: 018_01 | Status: inaccurate | MEE: 60.24 | MAE: 204.47 | MACE: 56.36 px
+ID: 024_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 184.16 px
+ID: 025_01 | Status: inaccurate | MEE: 36.63 | MAE: 230.32 | MACE: 149.01 px
+ID: 026_01 | Status: inaccurate | MEE: 20.59 | MAE: 51.97 | MACE: 29.77 px
+ID: 065_01 | Status: inaccurate | MEE: 2358.37 | MAE: 24141.79 | MACE: 102.70 px
+ID: 003_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 492.08 px
+ID: 012_01 | Status: inaccurate | MEE: 34.19 | MAE: 82.24 | MACE: 274.25 px
+ID: 058_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 448.98 px
+
+--- Validation Summary (SuperRetina Paper Aligned) ---
+Acceptable Rate: 5.00%
+Inaccurate Rate: 40.00%
+Failed Rate:     55.00%
+AUC@5:           0.0048
+AUC@10:          0.0326
+AUC@20:          0.1251
+Avg AUC@5-20:    0.0542
+Overall MACE:    361.11 px
+
+--- Validation Epoch 120 ---
+ID: 049_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 468.05 px
+ID: 024_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 16.55 px
+ID: 023_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 30.24 px
+ID: 063_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 351.54 px
+ID: 067_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 450.00 px
+ID: 003_01 | Status: inaccurate | MEE: 295.37 | MAE: 938.20 | MACE: 748.99 px
+ID: 041_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 247.28 px
+ID: 054_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 301.94 px
+ID: 008_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 184.07 px
+ID: 051_01 | Status: acceptable | MEE: 12.66 | MAE: 17.88 | MACE: 62.27 px
+ID: 062_01 | Status: inaccurate | MEE: 1875.51 | MAE: 3159.46 | MACE: 242.30 px
+ID: 010_01 | Status: inaccurate | MEE: 148.30 | MAE: 340.10 | MACE: 195.19 px
+ID: 018_01 | Status: inaccurate | MEE: 79.83 | MAE: 274.81 | MACE: 99.98 px
+ID: 024_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 184.16 px
+ID: 025_01 | Status: inaccurate | MEE: 21.95 | MAE: 59.28 | MACE: 108.09 px
+ID: 026_01 | Status: inaccurate | MEE: 39.77 | MAE: 78.33 | MACE: 67.16 px
+ID: 065_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 18.66 px
+ID: 003_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 492.08 px
+ID: 012_01 | Status: inaccurate | MEE: 62.72 | MAE: 190.87 | MACE: 105.42 px
+ID: 058_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 448.98 px
+
+--- Validation Summary (SuperRetina Paper Aligned) ---
+Acceptable Rate: 5.00%
+Inaccurate Rate: 35.00%
+Failed Rate:     60.00%
+AUC@5:           0.0100
+AUC@10:          0.0292
+AUC@20:          0.1117
+Avg AUC@5-20:    0.0503
+Overall MACE:    241.15 px
+
+--- Validation Epoch 125 ---
+ID: 049_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 468.05 px
+ID: 024_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 16.55 px
+ID: 023_01 | Status: inaccurate | MEE: 506.43 | MAE: 1345.30 | MACE: 383.38 px
+ID: 063_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 351.54 px
+ID: 067_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 450.00 px
+ID: 003_01 | Status: inaccurate | MEE: 894.99 | MAE: 6617.93 | MACE: 2178.80 px
+ID: 041_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 247.28 px
+ID: 054_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 301.94 px
+ID: 008_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 184.07 px
+ID: 051_01 | Status: inaccurate | MEE: 12.24 | MAE: 74.39 | MACE: 86.26 px
+ID: 062_01 | Status: inaccurate | MEE: 1056.56 | MAE: 3055.08 | MACE: 575.21 px
+ID: 010_01 | Status: inaccurate | MEE: 28.55 | MAE: 59.02 | MACE: 77.80 px
+ID: 018_01 | Status: acceptable | MEE: 12.98 | MAE: 21.03 | MACE: 14.92 px
+ID: 024_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 184.16 px
+ID: 025_01 | Status: inaccurate | MEE: 51.76 | MAE: 619.20 | MACE: 274.54 px
+ID: 026_01 | Status: acceptable | MEE: 7.60 | MAE: 25.96 | MACE: 99.13 px
+ID: 065_01 | Status: inaccurate | MEE: 1949.46 | MAE: 13381.56 | MACE: 1114.69 px
+ID: 003_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 492.08 px
+ID: 012_01 | Status: inaccurate | MEE: 20.04 | MAE: 38.49 | MACE: 67.05 px
+ID: 058_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 448.98 px
+
+--- Validation Summary (SuperRetina Paper Aligned) ---
+Acceptable Rate: 10.00%
+Inaccurate Rate: 40.00%
+Failed Rate:     50.00%
+AUC@5:           0.0263
+AUC@10:          0.0852
+AUC@20:          0.1856
+Avg AUC@5-20:    0.0990
+Overall MACE:    400.82 px
+
+--- Validation Epoch 130 ---
+ID: 049_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 468.05 px
+ID: 024_01 | Status: inaccurate | MEE: 1104.73 | MAE: 1775.82 | MACE: 505.23 px
+ID: 023_01 | Status: inaccurate | MEE: 4310.42 | MAE: 40023.28 | MACE: 665.96 px
+ID: 063_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 351.54 px
+ID: 067_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 450.00 px
+ID: 003_01 | Status: inaccurate | MEE: 332.35 | MAE: 969.97 | MACE: 1448.90 px
+ID: 041_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 247.28 px
+ID: 054_01 | Status: inaccurate | MEE: 47.11 | MAE: 134.92 | MACE: 919.52 px
+ID: 008_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 184.07 px
+ID: 051_01 | Status: acceptable | MEE: 8.67 | MAE: 21.98 | MACE: 13.80 px
+ID: 062_01 | Status: inaccurate | MEE: 89.87 | MAE: 639.74 | MACE: 1990.64 px
+ID: 010_01 | Status: acceptable | MEE: 9.21 | MAE: 23.21 | MACE: 7.73 px
+ID: 018_01 | Status: inaccurate | MEE: 48.94 | MAE: 104.34 | MACE: 126.37 px
+ID: 024_01 | Status: inaccurate | MEE: 3718.14 | MAE: 6053.09 | MACE: 357.20 px
+ID: 025_01 | Status: inaccurate | MEE: 100.86 | MAE: 331.62 | MACE: 67.52 px
+ID: 026_01 | Status: acceptable | MEE: 15.07 | MAE: 27.93 | MACE: 125.87 px
+ID: 065_01 | Status: inaccurate | MEE: 885.05 | MAE: 42882.16 | MACE: 1425.22 px
+ID: 003_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 492.08 px
+ID: 012_01 | Status: inaccurate | MEE: 16.64 | MAE: 75.62 | MACE: 17.74 px
+ID: 058_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 448.98 px
+
+--- Validation Summary (SuperRetina Paper Aligned) ---
+Acceptable Rate: 15.00%
+Inaccurate Rate: 50.00%
+Failed Rate:     35.00%
+AUC@5:           0.0090
+AUC@10:          0.0404
+AUC@20:          0.1401
+Avg AUC@5-20:    0.0631
+Overall MACE:    515.68 px
+
+--- Validation Epoch 135 ---
+ID: 049_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 468.05 px
+ID: 024_01 | Status: inaccurate | MEE: 559.18 | MAE: 2776.20 | MACE: 503.66 px
+ID: 023_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 30.24 px
+ID: 063_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 351.54 px
+ID: 067_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 450.00 px
+ID: 003_01 | Status: inaccurate | MEE: 252.07 | MAE: 433.97 | MACE: 178.81 px
+ID: 041_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 247.28 px
+ID: 054_01 | Status: inaccurate | MEE: 115.32 | MAE: 864.35 | MACE: 785.62 px
+ID: 008_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 184.07 px
+ID: 051_01 | Status: inaccurate | MEE: 16.76 | MAE: 56.63 | MACE: 27.96 px
+ID: 062_01 | Status: inaccurate | MEE: 671.66 | MAE: 21100.22 | MACE: 620.35 px
+ID: 010_01 | Status: acceptable | MEE: 14.05 | MAE: 35.51 | MACE: 8.53 px
+ID: 018_01 | Status: inaccurate | MEE: 80.60 | MAE: 120.69 | MACE: 93.53 px
+ID: 024_01 | Status: inaccurate | MEE: 757.90 | MAE: 3307.76 | MACE: 287.62 px
+ID: 025_01 | Status: inaccurate | MEE: 44.58 | MAE: 134.15 | MACE: 1058.54 px
+ID: 026_01 | Status: inaccurate | MEE: 51.13 | MAE: 91.17 | MACE: 89.64 px
+ID: 065_01 | Status: inaccurate | MEE: 149.81 | MAE: 302.33 | MACE: 78.30 px
+ID: 003_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 492.08 px
+ID: 012_01 | Status: inaccurate | MEE: 90.29 | MAE: 259.63 | MACE: 12.70 px
+ID: 058_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 448.98 px
+
+--- Validation Summary (SuperRetina Paper Aligned) ---
+Acceptable Rate: 5.00%
+Inaccurate Rate: 55.00%
+Failed Rate:     40.00%
+AUC@5:           0.0259
+AUC@10:          0.0542
+AUC@20:          0.1109
+Avg AUC@5-20:    0.0637
+Overall MACE:    320.88 px
+
+--- Validation Epoch 140 ---
+ID: 049_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 468.05 px
+ID: 024_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 16.55 px
+ID: 023_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 30.24 px
+ID: 063_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 351.54 px
+ID: 067_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 450.00 px
+ID: 003_01 | Status: inaccurate | MEE: 479.33 | MAE: 1375.03 | MACE: 223.33 px
+ID: 041_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 247.28 px
+ID: 054_01 | Status: inaccurate | MEE: 333.28 | MAE: 1026.99 | MACE: 3230.08 px
+ID: 008_01 | Status: inaccurate | MEE: 1278.62 | MAE: 12538.68 | MACE: 252.43 px
+ID: 051_01 | Status: inaccurate | MEE: 57.36 | MAE: 238.85 | MACE: 12.78 px
+ID: 062_01 | Status: inaccurate | MEE: 1136.22 | MAE: 1922.07 | MACE: 311.39 px
+ID: 010_01 | Status: acceptable | MEE: 11.07 | MAE: 26.76 | MACE: 68.44 px
+ID: 018_01 | Status: inaccurate | MEE: 23.96 | MAE: 80.47 | MACE: 19.78 px
+ID: 024_01 | Status: inaccurate | MEE: 498.35 | MAE: 5867.63 | MACE: 390.59 px
+ID: 025_01 | Status: inaccurate | MEE: 53.05 | MAE: 157.66 | MACE: 141.17 px
+ID: 026_01 | Status: acceptable | MEE: 9.83 | MAE: 26.95 | MACE: 26.70 px
+ID: 065_01 | Status: inaccurate | MEE: 1372.51 | MAE: 1750.28 | MACE: 679.03 px
+ID: 003_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 492.08 px
+ID: 012_01 | Status: inaccurate | MEE: 18.98 | MAE: 81.48 | MACE: 20.04 px
+ID: 058_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 448.98 px
+
+--- Validation Summary (SuperRetina Paper Aligned) ---
+Acceptable Rate: 10.00%
+Inaccurate Rate: 50.00%
+Failed Rate:     40.00%
+AUC@5:           0.0066
+AUC@10:          0.0328
+AUC@20:          0.1207
+Avg AUC@5-20:    0.0533
+Overall MACE:    394.02 px
+
+--- Validation Epoch 145 ---
+ID: 049_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 468.05 px
+ID: 024_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 16.55 px
+ID: 023_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 30.24 px
+ID: 063_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 351.54 px
+ID: 067_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 450.00 px
+ID: 003_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 185.81 px
+ID: 041_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 247.28 px
+ID: 054_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 301.94 px
+ID: 008_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 184.07 px
+ID: 051_01 | Status: acceptable | MEE: 8.73 | MAE: 14.44 | MACE: 17.76 px
+ID: 062_01 | Status: inaccurate | MEE: 38.00 | MAE: 493.84 | MACE: 160.01 px
+ID: 010_01 | Status: acceptable | MEE: 13.45 | MAE: 28.76 | MACE: 18.26 px
+ID: 018_01 | Status: inaccurate | MEE: 71.10 | MAE: 156.37 | MACE: 5.13 px
+ID: 024_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 184.16 px
+ID: 025_01 | Status: inaccurate | MEE: 100.41 | MAE: 210.64 | MACE: 776.60 px
+ID: 026_01 | Status: inaccurate | MEE: 79.03 | MAE: 165.71 | MACE: 10728.63 px
+ID: 065_01 | Status: inaccurate | MEE: 2498.98 | MAE: 27937.97 | MACE: 1057.03 px
+ID: 003_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 492.08 px
+ID: 012_01 | Status: inaccurate | MEE: 33.80 | MAE: 92.20 | MACE: 38.58 px
+ID: 058_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 448.98 px
+
+--- Validation Summary (SuperRetina Paper Aligned) ---
+Acceptable Rate: 10.00%
+Inaccurate Rate: 30.00%
+Failed Rate:     60.00%
+AUC@5:           0.0198
+AUC@10:          0.0787
+AUC@20:          0.1873
+Avg AUC@5-20:    0.0953
+Overall MACE:    808.13 px
+
+--- Validation Epoch 150 ---
+ID: 049_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 468.05 px
+ID: 024_01 | Status: inaccurate | MEE: 96.56 | MAE: 675.18 | MACE: 133.07 px
+ID: 023_01 | Status: inaccurate | MEE: 1700.14 | MAE: 10877.02 | MACE: 779.58 px
+ID: 063_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 351.54 px
+ID: 067_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 450.00 px
+ID: 003_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 185.81 px
+ID: 041_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 247.28 px
+ID: 054_01 | Status: inaccurate | MEE: 54.13 | MAE: 244.97 | MACE: 301.23 px
+ID: 008_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 184.07 px
+ID: 051_01 | Status: acceptable | MEE: 9.47 | MAE: 9.91 | MACE: 46.95 px
+ID: 062_01 | Status: inaccurate | MEE: 22.85 | MAE: 225.81 | MACE: 47.09 px
+ID: 010_01 | Status: acceptable | MEE: 17.26 | MAE: 26.80 | MACE: 81.64 px
+ID: 018_01 | Status: acceptable | MEE: 11.13 | MAE: 28.57 | MACE: 4308.41 px
+ID: 024_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 184.16 px
+ID: 025_01 | Status: inaccurate | MEE: 24.65 | MAE: 67.26 | MACE: 793.04 px
+ID: 026_01 | Status: inaccurate | MEE: 25.35 | MAE: 55.25 | MACE: 50.80 px
+ID: 065_01 | Status: inaccurate | MEE: 511.04 | MAE: 1032.48 | MACE: 1108.49 px
+ID: 003_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 492.08 px
+ID: 012_01 | Status: acceptable | MEE: 13.72 | MAE: 23.83 | MACE: 16.95 px
+ID: 058_01 | Status: failed     | MEE: inf | MAE: inf | MACE: 448.98 px
+
+--- Validation Summary (SuperRetina Paper Aligned) ---
+Acceptable Rate: 20.00%
+Inaccurate Rate: 35.00%
+Failed Rate:     45.00%
+AUC@5:           0.0198
+AUC@10:          0.0613
+AUC@20:          0.2000
+Avg AUC@5-20:    0.0937
+Overall MACE:    533.96 px
