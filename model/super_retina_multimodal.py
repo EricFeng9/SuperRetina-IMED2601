@@ -387,7 +387,8 @@ class SuperRetinaMultimodal(nn.Module):
                 suppress_fix = (detector_pred_fix * bg_mask_fix).mean()
                 
                 # 修复后的对称抑制逻辑
-                vessel_mask_mov = F.grid_sample(vessel_mask, grid_mov_to_fix, mode='nearest', align_corners=True) if grid_mov_to_fix is not None else torch.zeros_like(vessel_mask)
+                # Phase 0: 图像空间对齐 (Identity)，直接复用 vessel_mask
+                vessel_mask_mov = vessel_mask
                 bg_mask_mov = 1.0 - vessel_mask_mov
                 
                 suppress_mov = (detector_pred_mov * bg_mask_mov).mean()
