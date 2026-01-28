@@ -197,19 +197,26 @@ def test_on_real():
             valid_mask = -F.max_pool2d(-valid_mask, kernel_size=5, stride=1, padding=2)
             det_m = det_m * valid_mask
             
-            # Keypoint extraction
-            kps_f = nms(det_f, nms_thresh=nms_thresh, nms_size=5)[0]
-            kps_m = nms(det_m, nms_thresh=nms_thresh, nms_size=5)[0]
+            # Keypoint extraction - Optimized: Low Thresh NMS + Mandatory Top-K
+            # 1. Use extremely low threshold to keep all local peaks (prevent clustering)
+            nms_ret_f = nms(det_f, nms_thresh=1e-6, nms_size=5)
+            kps_f = nms_ret_f[0]
+            scores_f = nms_ret_f[1]
             
-            # Robust extraction fallback
-            if len(kps_f) < 20:
-                _, idx = torch.topk(det_f.view(-1), min(200, det_f.numel()))
-                y = idx // det_f.shape[3]; x = idx % det_f.shape[3]
-                kps_f = torch.stack([x, y], dim=1).float()
-            if len(kps_m) < 20:
-                _, idx = torch.topk(det_m.view(-1), min(200, det_m.numel()))
-                y = idx // det_m.shape[3]; x = idx % det_m.shape[3]
-                kps_m = torch.stack([x, y], dim=1).float()
+            nms_ret_m = nms(det_m, nms_thresh=1e-6, nms_size=5)
+            kps_m = nms_ret_m[0]
+            scores_m = nms_ret_m[1]
+            
+            # 2. Mandatory Top-K selection (e.g., K=300)
+            target_k = 300
+            
+            if len(kps_f) > target_k:
+                _, keep_idx = torch.topk(scores_f, target_k)
+                kps_f = kps_f[keep_idx]
+                
+            if len(kps_m) > target_k:
+                _, keep_idx = torch.topk(scores_m, target_k)
+                kps_m = kps_m[keep_idx]
 
             indices0, indices1 = [], []
             if len(kps_f) >= 4 and len(kps_m) >= 4:

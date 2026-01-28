@@ -1,0 +1,817 @@
+"""
+基于v7版本: Pretrained-Driven Fine-Tuning (Dual-Path Multimodal)
+1. 架构: Dual-Path Encoder (从 weights/SuperRetina.pth 初始化独立权重)
+2. 训练策略:
+   - Phase 0: 冻结检测头，极低 LR (1e-5) 训练 Encoder，正常 LR (1e-4) 训练描述子头
+   - Phase 1+: 全解冻 PKE，继承预训练的结构感知能力
+   - Symmetric Mask Constraint: 抑制背景误检
+"""
+
+import torch
+import os
+import sys
+import yaml
+import shutil
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+from torch.utils.data import DataLoader
+import torch.optim as optim
+import torch.nn.functional as F
+from tqdm import tqdm
+import argparse
+import random
+
+# 添加本地模块路径
+sys.path.append(os.getcwd())
+
+# 使用新数据集脚本
+from dataset.FIVES_extract_v2.FIVES_extract_v2 import MultiModalDataset
+from dataset.CF_OCTA_v2_repaired.cf_octa_v2_repaired_dataset import CFOCTADataset
+from dataset.operation_pre_filtered_cffa.operation_pre_filtered_cffa_dataset import CFFADataset
+from dataset.operation_pre_filtered_cfoct.operation_pre_filtered_cfoct_dataset import CFOCTDataset
+from dataset.operation_pre_filtered_octfa.operation_pre_filtered_octfa_dataset import OCTFADataset
+from model.super_retina_multimodal import SuperRetinaMultimodal
+from common.train_util import value_map_load, value_map_save, affine_images
+from common.common_util import nms, sample_keypoint_desc
+from common.vessel_keypoint_extractor import extract_vessel_keypoints, extract_vessel_keypoints_fallback
+from torchvision import transforms
+from gen_data_enhance_v2 import apply_domain_randomization, save_batch_visualization
+
+
+# ============================================================================
+# 域随机化增强 (Domain Randomization) - 使用 gen_data_enhance_v2.py
+# ============================================================================
+
+def compute_corner_error(H_est, H_gt, height, width):
+    """计算角点平均误差 (MACE)"""
+
+    corners = np.array([[0, 0], [width, 0], [width, height], [0, height]], dtype=np.float32)
+    corners_homo = np.concatenate([corners, np.ones((4, 1), dtype=np.float32)], axis=1)
+    
+    # GT 变换后的角点
+    corners_gt_homo = (H_gt @ corners_homo.T).T
+    corners_gt = corners_gt_homo[:, :2] / (corners_gt_homo[:, 2:] + 1e-6)
+    
+    # 预测变换后的角点
+    corners_est_homo = (H_est @ corners_homo.T).T
+    corners_est = corners_est_homo[:, :2] / (corners_est_homo[:, 2:] + 1e-6)
+    
+    try:
+        errors = np.sqrt(np.sum((corners_est - corners_gt)**2, axis=1))
+        mace = np.mean(errors)
+    except:
+        mace = float('inf')
+    return mace
+
+
+
+
+def compute_checkerboard(img1, img2, n_grid=4):
+    """计算棋盘格可视化"""
+    if img1.ndim == 3: img1 = cv2.cvtColor(img1, cv2.COLOR_RGB2GRAY) if img1.shape[2] == 3 else img1.squeeze()
+    if img2.ndim == 3: img2 = cv2.cvtColor(img2, cv2.COLOR_RGB2GRAY) if img2.shape[2] == 3 else img2.squeeze()
+    h, w = img1.shape[:2]
+    if img2.shape[:2] != (h, w): img2 = cv2.resize(img2, (w, h))
+    grid_h, grid_w = h // n_grid, w // n_grid
+    checkerboard = np.zeros_like(img1)
+    for i in range(n_grid):
+        for j in range(n_grid):
+            y_s, y_e = i * grid_h, (i + 1) * grid_h if i < n_grid - 1 else h
+            x_s, x_e = j * grid_w, (j + 1) * grid_w if j < n_grid - 1 else w
+            checkerboard[y_s:y_e, x_s:x_e] = img1[y_s:y_e, x_s:x_e] if (i + j) % 2 == 0 else img2[y_s:y_e, x_s:x_e]
+    return checkerboard
+
+def draw_matches(img1, kps1, img2, kps2, matches, save_path):
+    """
+    在两张图像之间绘制匹配连线
+    """
+    if torch.is_tensor(img1): img1 = (img1.cpu().numpy() * 255).astype(np.uint8)
+    if torch.is_tensor(img2): img2 = (img2.cpu().numpy() * 255).astype(np.uint8)
+    
+    if img1.ndim == 3: img1 = img1.squeeze()
+    if img2.ndim == 3: img2 = img2.squeeze()
+    
+    kp1_cv = [cv2.KeyPoint(x=float(pt[0]), y=float(pt[1]), size=10) for pt in kps1]
+    kp2_cv = [cv2.KeyPoint(x=float(pt[0]), y=float(pt[1]), size=10) for pt in kps2]
+    
+    out_img = cv2.drawMatches(img1, kp1_cv, img2, kp2_cv, matches, None, 
+                             flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+    
+    cv2.imwrite(save_path, out_img)
+
+def visualize_descriptors_pca(desc_fix, desc_mov):
+    """
+    使用 PCA 将高维描述子降维到 RGB 空间进行可视化。
+    注意：两张图必须共用同一个 PCA 空间，颜色才有可比性。
+    """
+    B, C, H, W = desc_fix.shape
+    # 展平并拼接
+    feat_fix = desc_fix[0].view(C, -1).permute(1, 0) # [H*W, C]
+    feat_mov = desc_mov[0].view(C, -1).permute(1, 0) # [H*W, C]
+    combined = torch.cat([feat_fix, feat_mov], dim=0) # [2*H*W, C]
+    
+    # 归一化
+    combined = F.normalize(combined, dim=-1)
+    
+    # 快速 PCA 降维 (使用 torch.pca_lowrank)
+    try:
+        _, _, V = torch.pca_lowrank(combined, q=3, niter=2)
+        pca_feat = torch.mm(combined, V) # [2*H*W, 3]
+        
+        # 缩放到 [0, 1]
+        pca_feat_min = pca_feat.min(dim=0, keepdim=True)[0]
+        pca_feat_max = pca_feat.max(dim=0, keepdim=True)[0]
+        pca_feat = (pca_feat - pca_feat_min) / (pca_feat_max - pca_feat_min + 1e-8)
+        
+        # 分解回两张图
+        pca_fix = pca_feat[:H*W].view(H, W, 3).cpu().numpy()
+        pca_mov = pca_feat[H*W:].view(H, W, 3).cpu().numpy()
+        
+        return (pca_fix * 255).astype(np.uint8), (pca_mov * 255).astype(np.uint8)
+    except:
+        # 兜底：如果 PCA 失败，返回全黑图
+        black = np.zeros((H, W, 3), dtype=np.uint8)
+        return black, black
+
+def validate(model, val_dataset, device, epoch, save_dir, log_file, train_config, mode):
+    """
+    验证函数:评估模型在真实数据集上的表现
+    使用与 test_on_real.py 相同的评估流程
+    """
+    from measurement_SuperRetina import calculate_metrics, compute_auc
+    
+    model.eval()
+    all_metrics = []
+    
+    # 从配置中统一读取阈值
+    nms_thresh = train_config.get('nms_thresh', 0.01)
+    content_thresh = train_config.get('content_thresh', 0.7) # Lowe's Ratio
+    geometric_thresh = train_config.get('geometric_thresh', 0.7) # RANSAC re-projection error
+    
+    epoch_save_dir = os.path.join(save_dir, f'epoch{epoch}')
+    os.makedirs(epoch_save_dir, exist_ok=True)
+    
+    log_f = open(log_file, 'a')
+    log_f.write(f'\n--- Validation Epoch {epoch} ---\n')
+    
+    # 图像预处理
+    transform = transforms.Compose([
+        transforms.ToPILImage(),
+        transforms.Resize((512, 512)),
+        transforms.ToTensor(),
+    ])
+    
+    with torch.no_grad():
+        for i in tqdm(range(len(val_dataset)), desc=f"Val Epoch {epoch}"):
+            raw_data = val_dataset.get_raw_sample(i)
+            
+            # 根据不同模态解包数据
+            if mode == 'cfocta': # (cf, octa, pts_cf, pts_octa, path_cf, path_octa)
+                img_fix_raw, img_mov_raw, pts_fix_gt, pts_mov_gt, path_fix, path_mov = raw_data
+            elif mode == 'cffa': # (fa, cf, pts_fa, pts_cf, path_fa, path_cf)
+                img_mov_raw, img_fix_raw, pts_mov_gt, pts_fix_gt, path_mov, path_fix = raw_data
+            elif mode == 'cfoct': # (cf, oct, pts_cf, pts_oct, path_cf, path_oct)
+                img_fix_raw, img_mov_raw, pts_fix_gt, pts_mov_gt, path_fix, path_mov = raw_data
+            elif mode == 'octfa': # (fa, oct, pts_fa, pts_oct, path_fa, path_oct)
+                img_mov_raw, img_fix_raw, pts_mov_gt, pts_fix_gt, path_mov, path_fix = raw_data
+            
+            # 确保灰度图用于模型输入
+            if img_fix_raw.ndim == 3:
+                img_fix_gray = cv2.cvtColor(img_fix_raw, cv2.COLOR_RGB2GRAY) if img_fix_raw.shape[2] == 3 else img_fix_raw.squeeze()
+            else:
+                img_fix_gray = img_fix_raw
+
+            if img_mov_raw.ndim == 3:
+                img_mov_gray = cv2.cvtColor(img_mov_raw, cv2.COLOR_RGB2GRAY) if img_mov_raw.shape[2] == 3 else img_mov_raw.squeeze()
+            else:
+                img_mov_gray = img_mov_raw
+            
+            sample_id = os.path.basename(path_fix).split('.')[0]
+            sample_save_dir = os.path.join(epoch_save_dir, sample_id)
+            os.makedirs(sample_save_dir, exist_ok=True)
+            
+            # 准备模型输入
+            img0_tensor = transform(img_fix_gray).unsqueeze(0).to(device)
+            img1_tensor = transform(img_mov_gray).unsqueeze(0).to(device)
+            
+            # v4.1 Logic REMOVED for v6: 验证阶段保持原始输入，不反色
+            # v6 模型 (Fix Encoder) 已经设计为直接处理暗血管特征
+            img0_input = img0_tensor
+            
+            # 提取跨模态特征
+            det_fix, desc_fix = model.network(img0_input, mode='fix')
+            det_mov, desc_mov = model.network(img1_tensor, mode='mov')
+            
+            # --- 新增: 描述子 PCA 可视化 ---
+            # 重点: 只有当颜色在两张图中分布一致时，才说明描述子对齐了
+            pca_fix, pca_mov = visualize_descriptors_pca(desc_fix, desc_mov)
+            cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_desc_pca_fix.png'), 
+                        cv2.cvtColor(pca_fix, cv2.COLOR_RGB2BGR))
+            cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_desc_pca_mov.png'), 
+                        cv2.cvtColor(pca_mov, cv2.COLOR_RGB2BGR))
+            
+            # 有效区域屏蔽,防止边缘伪影干扰关键点提取
+            valid_mask = (img1_tensor > 0.05).float()
+            valid_mask = -F.max_pool2d(-valid_mask, kernel_size=5, stride=1, padding=2)
+            det_mov_masked = det_mov * valid_mask
+            
+            # 提取关键点 - 优化策略: 低阈值 NMS + 强制 Top-K
+            # 1. 使用极低阈值进行 NMS，保证局部极值被保留 (防止扎堆)，但不因阈值过高而漏掉暗点
+            nms_ret = nms(det_fix, nms_thresh=1e-6, nms_size=5) # 几乎保留所有局部峰值
+            kps_fix = nms_ret[0]
+            scores_fix = nms_ret[1]
+            
+            nms_ret_mov = nms(det_mov_masked, nms_thresh=1e-6, nms_size=5)
+            kps_mov = nms_ret_mov[0]
+            scores_mov = nms_ret_mov[1]
+            
+            # 2. 强制 Top-K 截断 (例如取前 300 个点)，保证有足够的点进行 RANSAC
+            target_k = 300
+            
+            if len(kps_fix) > target_k:
+                _, keep_idx = torch.topk(scores_fix, target_k)
+                kps_fix = kps_fix[keep_idx]
+                
+            if len(kps_mov) > target_k:
+                _, keep_idx = torch.topk(scores_mov, target_k)
+                kps_mov = kps_mov[keep_idx]
+            
+            good_matches = []
+            if len(kps_fix) >= 4 and len(kps_mov) >= 4:
+                # 采样描述子并进行特征匹配
+                desc_fix_samp = sample_keypoint_desc(kps_fix[None], desc_fix, s=8)[0]
+                desc_mov_samp = sample_keypoint_desc(kps_mov[None], desc_mov, s=8)[0]
+                
+                d1 = desc_fix_samp.permute(1, 0).cpu().numpy()
+                d2 = desc_mov_samp.permute(1, 0).cpu().numpy()
+                
+                matches = cv2.BFMatcher().knnMatch(d1, d2, k=2)
+                
+                # 使用配置中的 content_thresh 作为 Ratio Test 阈值
+                for m, n in matches:
+                    if m.distance < content_thresh * n.distance:
+                        good_matches.append(m)
+            
+            # 映射回原始尺度
+            h_f, w_f = img_fix_raw.shape[:2]
+            h_m, w_m = img_mov_raw.shape[:2]
+            
+            kps_f_orig = kps_fix.cpu().numpy() * [w_f / 512.0, h_f / 512.0]
+            kps_m_orig = kps_mov.cpu().numpy() * [w_m / 512.0, h_m / 512.0]
+            
+            mkpts0 = np.array([kps_f_orig[m.queryIdx] for m in good_matches]) if good_matches else np.array([])
+            mkpts1 = np.array([kps_m_orig[m.trainIdx] for m in good_matches]) if good_matches else np.array([])
+            
+            # 为了统一评估，将 moving 图像 resize 到和 fix 相同尺寸
+            # 这样匹配点和控制点都在同一尺寸空间中
+            if (h_m, w_m) != (h_f, w_f):
+                # Resize moving 图像到 fix 尺寸
+                img_mov_resized = cv2.resize(img_mov_raw, (w_f, h_f), interpolation=cv2.INTER_LINEAR)
+                
+                # 调整 moving 侧的关键点和匹配点坐标
+                scale_x = w_f / w_m
+                scale_y = h_f / h_m
+                
+                # 只对非空数组进行缩放操作
+                if len(mkpts1) > 0:
+                    mkpts1 = mkpts1 * [scale_x, scale_y]
+                if len(kps_m_orig) > 0:
+                    kps_m_orig = kps_m_orig * [scale_x, scale_y]
+                if len(pts_mov_gt) > 0:
+                    pts_mov_gt = pts_mov_gt * [scale_x, scale_y]
+            else:
+                img_mov_resized = img_mov_raw
+            
+            # 计算 GT 单应矩阵
+            if len(pts_fix_gt) >= 4:
+                H_gt, _ = cv2.findHomography(pts_mov_gt, pts_fix_gt, cv2.RANSAC, 5.0)
+            else:
+                H_gt = None
+
+            # 计算预测单应矩阵
+            H_pred = None
+            if len(mkpts0) >= 4:
+                H_pred, _ = cv2.findHomography(mkpts1, mkpts0, cv2.RANSAC, geometric_thresh)
+            
+            # 最终估计矩阵: 成功则用 H_pred, 失败则用单位阵 (不注册)
+            H_est = H_pred if H_pred is not None else np.eye(3)
+            
+            # 计算角点误差 MACE
+            mace = compute_corner_error(H_est, H_gt, h_f, w_f) if H_gt is not None else float('inf')
+
+            # 使用 measurement.py 获取其他指标 (Rep, MIR)
+            # Scaling to Paper size 2912x2912 for metric calculation
+            orig_size_ref = (2912, 2912)
+            sc_f = [orig_size_ref[1] / 512.0, orig_size_ref[0] / 512.0]
+            sc_m = [orig_size_ref[1] / 512.0, orig_size_ref[0] / 512.0]
+            
+            mkpts0_p = kps_fix.cpu().numpy()[ [m.queryIdx for m in good_matches] ] * sc_f if good_matches else np.array([])
+            mkpts1_p = kps_mov.cpu().numpy()[ [m.trainIdx for m in good_matches] ] * sc_m if good_matches else np.array([])
+            
+            # Scale GT Control Points to 2912x2912
+            pts_f_p = pts_fix_gt * [orig_size_ref[1] / w_f, orig_size_ref[0] / h_f]
+            pts_m_p = pts_mov_gt * [orig_size_ref[1] / w_m, orig_size_ref[0] / h_m]
+
+            # Compute Metrics aligned with paper
+            res_paper = calculate_metrics(mkpts0_p, mkpts1_p, pts_f_p, pts_m_p, orig_size=orig_size_ref)
+            
+            # Also keep compatibility with some previous logging if needed, 
+            # but primary focus is paper metrics
+            metrics = {
+                'MEE': res_paper['MEE'],
+                'MAE': res_paper['MAE'],
+                'is_acceptable': res_paper['is_acceptable'],
+                'is_inaccurate': res_paper['is_inaccurate'],
+                'is_failed': res_paper['is_failed'],
+                'errors': res_paper['errors'],
+                'MACE': mace # keep MACE for tracking corner error
+            }
+            
+            all_metrics.append(metrics)
+            
+            log_f.write(f"ID: {sample_id} | Status: {res_paper['status']:10} | "
+                       f"MEE: {metrics['MEE']:.2f} | MAE: {metrics['MAE']:.2f} | "
+                       f"MACE: {metrics['MACE']:.2f} px\n")
+            
+            # 保存可视化结果
+            # (sample_save_dir 已在循环开始处定义并创建)
+            
+            # 保存原始图像（moving 使用统一尺寸后的版本）
+            cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_fix.png'), img_fix_raw)
+            cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_moving.png'), img_mov_resized)
+
+            # 绘制并保存带有关键点的图像 (Fix & Moving)
+            kp_f_cv = [cv2.KeyPoint(x=float(pt[0]), y=float(pt[1]), size=10) for pt in kps_f_orig]
+            # 注意: drawKeypoints 会自动处理灰度/彩色输入，返回彩色图像
+            img_fix_kpts = cv2.drawKeypoints(img_fix_raw, kp_f_cv, None, color=(0, 255, 0), flags=0)
+            
+            # --- DEBUG INFO: 在图片上打印调试信息 ---
+            # 统计 Heatmap 极值，判断是否全黑或响应过低
+            det_max = det_fix.max().item()
+            det_mean = det_fix.mean().item()
+            txt = f"Det Max: {det_max:.4f} Mean: {det_mean:.4f} Pts: {len(kps_f_orig)}"
+            cv2.putText(img_fix_kpts, txt, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+            
+            # 统计 GT Mask 信息 (如果有) - 既然是 val，我们可以尝试从 memory 或 disk 再次验证 mask 状态
+            # 这里简单打印一下本次检测到的点坐标范围，看是否集中在 (0,0)
+            if len(kps_f_orig) > 0:
+                min_x, max_x = kps_f_orig[:, 0].min(), kps_f_orig[:, 0].max()
+                min_y, max_y = kps_f_orig[:, 1].min(), kps_f_orig[:, 1].max()
+                t2 = f"X: {min_x:.1f}-{max_x:.1f} Y: {min_y:.1f}-{max_y:.1f}"
+                cv2.putText(img_fix_kpts, t2, (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+
+            cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_fix_kpts.png'), img_fix_kpts)
+
+            kp_m_cv = [cv2.KeyPoint(x=float(pt[0]), y=float(pt[1]), size=10) for pt in kps_m_orig]
+            img_mov_kpts = cv2.drawKeypoints(img_mov_resized, kp_m_cv, None, color=(0, 255, 0), flags=0)
+            
+            # --- DEBUG INFO MOVING ---
+            det_m_max = det_mov.max().item()
+            det_m_mean = det_mov.mean().item()
+            valid_area_ratio = valid_mask.mean().item()
+            txt_m = f"Det Max: {det_m_max:.4f} Mean: {det_m_mean:.4f} Pts: {len(kps_m_orig)}"
+            cv2.putText(img_mov_kpts, txt_m, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+            
+            t2_m = f"Msk Ratio: {valid_area_ratio:.2f}"
+            cv2.putText(img_mov_kpts, t2_m, (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+            
+            cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_moving_kpts.png'), img_mov_kpts)
+
+            # 无论是否有足够的匹配点，都进行可视化保存
+            # 确保图像为灰度图（用于配准和棋盘格）
+            img_m_gray = cv2.cvtColor(img_mov_resized, cv2.COLOR_RGB2GRAY) if img_mov_resized.ndim == 3 else img_mov_resized
+            img_f_gray = cv2.cvtColor(img_fix_raw, cv2.COLOR_RGB2GRAY) if img_fix_raw.ndim == 3 else img_fix_raw
+            
+            # 使用 H_est (可能是单位阵) 配准并保存结果
+            reg_img = cv2.warpPerspective(img_m_gray, H_est, (w_f, h_f))
+            cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_moving_result.png'), reg_img)
+            
+            # 记录棋盘格
+            checker = compute_checkerboard(img_f_gray, reg_img, n_grid=4)
+            cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_checkerboard.png'), checker)
+            
+            # 绘制匹配关系（使用统一尺寸后的图像）
+            draw_matches(img_fix_raw, kps_f_orig, img_mov_resized, kps_m_orig, good_matches, 
+                        os.path.join(sample_save_dir, f'{sample_id}_matches.png'))
+
+    # 计算平均指标
+    num_total = len(all_metrics)
+    summary = {
+        'Acceptable_Rate': np.mean([m['is_acceptable'] for m in all_metrics]),
+        'Inaccurate_Rate': np.mean([m['is_inaccurate'] for m in all_metrics]),
+        'Failed_Rate': np.mean([m['is_failed'] for m in all_metrics]),
+        'Avg_MACE': np.mean([m['MACE'] for m in all_metrics if m['MACE'] != float('inf')])
+    }
+    
+    # 计算 mAUC
+    all_errors = []
+    for m in all_metrics:
+        if m['errors']: all_errors.extend(m['errors'])
+    
+    auc5 = compute_auc(all_errors, max_threshold=5)
+    auc10 = compute_auc(all_errors, max_threshold=10)
+    auc20 = compute_auc(all_errors, max_threshold=20)
+    avg_auc = (auc5 + auc10 + auc20) / 3.0
+    
+    log_f.write(f"\n--- Validation Summary (SuperRetina Paper Aligned) ---\n")
+    log_f.write(f"Acceptable Rate: {summary['Acceptable_Rate']*100:.2f}%\n")
+    log_f.write(f"Inaccurate Rate: {summary['Inaccurate_Rate']*100:.2f}%\n")
+    log_f.write(f"Failed Rate:     {summary['Failed_Rate']*100:.2f}%\n")
+    log_f.write(f"AUC@5:           {auc5:.4f}\n")
+    log_f.write(f"AUC@10:          {auc10:.4f}\n")
+    log_f.write(f"AUC@20:          {auc20:.4f}\n")
+    log_f.write(f"Avg AUC@5-20:    {avg_auc:.4f}\n")
+    log_f.write(f"Overall MACE:    {summary['Avg_MACE']:.2f} px\n")
+    log_f.close()
+    
+    print(f'Validation Epoch {epoch} Finished. Avg AUC@5-20: {avg_auc:.4f}, Acc Rate: {summary["Acceptable_Rate"]*100:.2f}%')
+    return avg_auc
+
+def train_multimodal():
+    """
+    多模态训练主流程 - 使用新数据集和三阶段课程学习
+    """
+    # 加载配置
+    config_path = './config/train_multimodal.yaml'
+    if not os.path.exists(config_path):
+        raise FileNotFoundError(f"Config not found: {config_path}")
+        
+    with open(config_path) as f:
+        config = yaml.safe_load(f)
+
+    # Command line args to override config
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--name', '-n', type=str, help='Experiment name', default=None)
+    parser.add_argument('--mode', '-m', type=str, choices=['cffa', 'cfoct', 'octfa', 'cfocta'], 
+                        help='Registration mode', default=None)
+    parser.add_argument('--epoch', '-e', type=int, help='Number of training epochs', default=500)
+    parser.add_argument('--batch_size', '-b', type=int, help='Batch size for training', default=4)
+    parser.add_argument('--geometric_thresh', '-g', type=float, help='RANSAC geometric threshold for PKE', default=0.7)
+    parser.add_argument('--content_thresh', '-c', type=float, help='Lowe ratio threshold for feature matching', default=0.8)
+    parser.add_argument('--start_point', '-s', type=str, help='Path to checkpoint to resume from', default=None)
+    args = parser.parse_args()
+    
+    if args.name:
+        config['MODEL']['name'] = args.name
+    if args.mode:
+        config['DATASET']['registration_type'] = args.mode
+    if args.epoch:
+        config['MODEL']['num_epoch'] = args.epoch
+    if args.batch_size:
+        config['DATASET']['batch_size'] = args.batch_size
+    if args.geometric_thresh is not None:
+        config['PKE']['geometric_thresh'] = args.geometric_thresh
+    if args.content_thresh is not None:
+        config['PKE']['content_thresh'] = args.content_thresh
+    
+    # --- 新增: 自动从 start_point 路径中提取实验名称 ---
+    if args.start_point and not args.name:
+        # 路径格式通常为: ./save/cffa/EXP_NAME/latestpoint/checkpoint.pth
+        # 取 checkpoint.pth 的上两级目录名作为实验名称
+        try:
+            detected_name = os.path.basename(os.path.dirname(os.path.dirname(os.path.abspath(args.start_point))))
+            config['MODEL']['name'] = detected_name
+            print(f"Auto-detected experiment name from path: {detected_name}")
+        except:
+            pass
+        
+    # v6: Dual-Path Encoder (False)
+    config['MODEL']['shared_encoder'] = False
+        
+    train_config = {**config['MODEL'], **config['PKE'], **config['DATASET'], **config['VALUE_MAP']}
+    
+    exp_name = train_config.get('name', 'default_exp')
+    reg_type = train_config['registration_type']
+    save_root = f'./save/{reg_type}/{exp_name}'
+    os.makedirs(save_root, exist_ok=True)
+    
+    log_file = os.path.join(save_root, 'validation_log.txt')
+    train_log_file = os.path.join(save_root, 'train_log.txt')  # 新增：训练日志
+    
+    device = torch.device(train_config['device'] if torch.cuda.is_available() else "cpu")
+    
+    # 打开训练日志文件
+    train_log = open(train_log_file, 'a', buffering=1)  # 行缓冲，实时写入
+    
+    def log_print(msg):
+        """同时输出到控制台和日志文件"""
+        print(msg)
+        train_log.write(msg + '\n')
+        train_log.flush()
+    
+    log_print(f"Using device: {device} | Experiment: {exp_name}")
+
+    # 数据加载 - 使用新的FIVES数据集进行训练
+    root_dir = train_config['root_dir']
+    batch_size = train_config['batch_size']
+    img_size = train_config.get('img_size', 512)
+    df = train_config.get('df', 8)
+    
+    train_set = MultiModalDataset(
+        root_dir=root_dir, 
+        mode=reg_type, 
+        split='train', 
+        img_size=img_size, 
+        df=df
+    )
+    
+    # 验证集使用真实数据集 (与 test_on_real.py 一致)
+    if reg_type == 'cfocta':
+        val_set = CFOCTADataset(root_dir='dataset/CF_OCTA_v2_repaired', split='val', mode='cf2octa')
+    elif reg_type == 'cffa':
+        val_set = CFFADataset(root_dir='dataset/operation_pre_filtered_cffa', split='val', mode='fa2cf')
+    elif reg_type == 'cfoct':
+        val_set = CFOCTDataset(root_dir='dataset/operation_pre_filtered_cfoct', split='val', mode='cf2oct')
+    elif reg_type == 'octfa':
+        val_set = OCTFADataset(root_dir='dataset/operation_pre_filtered_octfa', split='val', mode='fa2oct')
+    
+    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, num_workers=4)
+    
+    # 初始化多模态 SuperRetina 模型
+    model = SuperRetinaMultimodal(train_config, device=device)
+    
+    # --- v7: 分层学习率设置 (Layer-wise Learning Rate) ---
+    encoder_params = list(model.encoder_fix.parameters()) + list(model.encoder_mov.parameters())
+    head_params = [p for n, p in model.named_parameters() if 'encoder' not in n]
+    
+    optimizer = optim.Adam([
+        {'params': encoder_params, 'lr': 1e-5}, # Encoder 使用低学习率保护预训练特征
+        {'params': head_params, 'lr': 1e-4}     # Head 使用正常学习率进行模态适配
+    ])
+    
+    start_epoch = 1
+    # 优先使用命令行指定的 --start_point 恢复训练
+    if args.start_point and os.path.exists(args.start_point):
+        log_print(f"Resuming from checkpoint: {args.start_point}")
+        checkpoint = torch.load(args.start_point, map_location=device)
+        model.load_state_dict(checkpoint['net'])
+        if 'optimizer' in checkpoint:
+            optimizer.load_state_dict(checkpoint['optimizer'])
+        start_epoch = checkpoint.get('epoch', 0) + 1
+        
+        # 核心修复：恢复最佳指标值，确保 bestcheckpoint 逻辑延续
+        if 'auc_score' in checkpoint:
+            best_auc = checkpoint['auc_score']
+            best_val_score = best_auc
+            log_print(f"Restored Best AUC: {best_auc:.4f}")
+        elif 'mace' in checkpoint:
+            # 兼容旧版本
+            best_auc = 0.0
+            best_val_score = 0.0
+            log_print(f"Restored from MACE-based checkpoint. Resetting AUC tracker.")
+            
+        log_print(f"Resuming from Epoch {start_epoch}")
+    # 其次优先尝试加载 v7 官方预训练权重 (weights/SuperRetina.pth)
+    elif os.path.exists('weights/SuperRetina.pth'):
+        path = 'weights/SuperRetina.pth'
+        log_print(f"Loading official Pretrained weight from {path} (Mapping to Dual-Path)")
+        checkpoint = torch.load(path, map_location=device)
+        pretrained_dict = checkpoint['net']
+        model_dict = model.state_dict()
+        
+        # 权重映射: 官方权重中编码器层可能在顶层 (conv1a, conv1b, ...) 或在 encoder. 命名空间下
+        new_dict = {}
+        # 编码器特有的层名前缀
+        encoder_layer_prefixes = ['conv1a', 'conv1b', 'conv2a', 'conv2b', 'conv3a', 'conv3b', 'conv4a', 'conv4b']
+        
+        for k, v in pretrained_dict.items():
+            # 情况 1: 键名以 "encoder." 开头
+            if k.startswith('encoder.'):
+                new_dict[k.replace('encoder.', 'encoder_fix.')] = v
+                new_dict[k.replace('encoder.', 'encoder_mov.')] = v
+            # 情况 2: 键名直接是编码器层名 (conv1a.weight 等)
+            elif any(k.startswith(prefix + '.') for prefix in encoder_layer_prefixes):
+                new_dict['encoder_fix.' + k] = v
+                new_dict['encoder_mov.' + k] = v
+            # 情况 3: 共享头层名 (convDa, dconv_up3 等)
+            else:
+                # 只有当模型确实存在这个键时才添加，避免 "Unexpected key" 错误
+                if k in model_dict:
+                    new_dict[k] = v
+        
+        # 使用 strict=False 加载，以防某些层微调过或结构有细微差异
+        model.load_state_dict(new_dict, strict=False)
+        log_print("Successfully mapped and loaded pretrained weights (Strict=False).")
+        
+    # 再次使用配置文件里的 pretrained_path
+    elif train_config['load_pre_trained_model']:
+        path = train_config['pretrained_path']
+        if os.path.exists(path):
+            log_print(f"Loading custom pretrained weight from {path}")
+            checkpoint = torch.load(path, map_location=device)
+            model.load_state_dict(checkpoint['net'])
+    
+    num_epochs = train_config['num_epoch']
+    pke_start_epoch = train_config['pke_start_epoch']
+    
+    is_value_map_save = train_config['is_value_map_save']
+    value_map_save_dir = train_config['value_map_save_dir']
+    
+    if is_value_map_save:
+        if os.path.exists(value_map_save_dir):
+            shutil.rmtree(value_map_save_dir)
+        os.makedirs(value_map_save_dir)
+        
+    value_maps_running = {} if not is_value_map_save else None
+    
+    # 最佳指标追踪 (AUC 越大越好)
+    best_auc = -1.0
+    
+    # 早停机制变量 (仅在epoch >= 100后启用)
+    patience = 5  # 验证指标连续5次不提升则早停
+    patience_counter = 0
+    best_val_score = -1.0
+
+    # ==========================================
+    # v6.2: 课程学习阶段设置
+    # ==========================================
+    phase0_epochs = 30  # 前 30 个 epoch 专门用于特征空间对齐
+    
+    # 初始验证 (仅从 Epoch 1 开始时执行)
+    if start_epoch == 1:
+        log_print("Running initial validation...")
+        _ = validate(model, val_set, device, 0, save_root, log_file, train_config, reg_type)
+    else:
+        log_print(f"Resuming: Skipping initial validation (Current Epoch: {start_epoch})")
+
+    # 训练循环
+    for epoch in range(start_epoch, num_epochs + 1):
+        if epoch <= phase0_epochs:
+            phase = 0
+            pke_supervised = False
+            model.PKE_learn = False 
+            phase_name = f"Phase 0: Modality Adaptation & Space Alignment (Epoch {epoch}/{phase0_epochs})"
+            # --- v7 Correction: Freeze Fix Encoder & Heads (Avoid Feature Drift) ---
+            # 只训练 Moving Encoder 以适配 Fix Encoder (Anchor) 的特征空间
+            # 保证 Detector Head 接收到的特征是可以被识别的 (即 Fix Pretrained Space)
+            for n, p in model.named_parameters():
+                if 'encoder_mov' in n:
+                    p.requires_grad = True
+                else:
+                    p.requires_grad = False
+        else:
+            phase = 3 
+            pke_supervised = False 
+            model.PKE_learn = True
+            phase_name = f"Phase 1+: Hybrid PKE Registration (Epoch {epoch}/{num_epochs})"
+            # --- v7: 全量开放训练 ---
+            for p in model.parameters():
+                p.requires_grad = True
+            
+        log_print(f'--- {phase_name} ---')
+        model.train()
+            
+        running_loss_det = 0.0
+        running_loss_desc = 0.0
+        total_samples = 0
+        
+        for step_idx, data in enumerate(tqdm(train_loader, desc=f"Train Epoch {epoch}")):
+            img0_orig = data['image0'].to(device)
+            
+            # v6.2: 根据阶段选择 Moving 图像源
+            if phase == 0:
+                # Phase 0 使用解剖完全对齐的原始图副本
+                img1_orig = data['image1_origin'].to(device)
+            else:
+                # Phase 1+ 使用带有随机仿射变换的图
+                img1_orig = data['image1'].to(device)
+            
+            # 域随机化 (保持两边独立增强)
+            img0 = apply_domain_randomization(img0_orig)
+            img1 = apply_domain_randomization(img1_orig)
+            
+            img0_input = img0
+            
+            # ===== 可视化: 保存第一个 epoch 的前两个 batch =====
+            if epoch == 1 and step_idx < 2:
+                save_batch_visualization(
+                    img0_orig, img1_orig, img0_input, img1,
+                    save_root, epoch, step_idx + 1, batch_size,
+                    vessel_mask=data['vessel_mask0'].to(device)
+                )
+            # ===== 关键修改：从完整血管分割图中提取稀疏的分叉点 =====
+            # 这些分叉点将作为训练时的监督信号，引导模型学习独特的关键点
+            vessel_mask_full = data['vessel_mask0'].to(device)  # [B, 1, H, W]
+            vessel_keypoints_batch = []
+            
+            for b in range(vessel_mask_full.shape[0]):
+                # 转换为 numpy 格式 (H, W) - 修复数值溢出问题
+                mask_tensor = vessel_mask_full[b, 0].cpu()
+                if mask_tensor.max() <= 1.0:
+                    mask_np = (mask_tensor.numpy() * 255).astype(np.uint8)
+                else:
+                    mask_np = mask_tensor.numpy().astype(np.uint8)
+                
+                # 提取关键点
+                try:
+                    keypoints = extract_vessel_keypoints(mask_np, min_distance=8)
+                except:
+                    try:
+                        keypoints = extract_vessel_keypoints_fallback(mask_np, min_distance=8)
+                    except:
+                        # 如果提取失败，使用原始掩码
+                        keypoints = (mask_np > 127).astype(np.float32)
+                        print("点位提取失败")
+                
+                # 调试: 检查点位数量
+                # if epoch == 1 and step_idx < 5:
+                #     print(f"Sample {b}: Found {np.sum(keypoints)} vessel keypoints")
+                    
+                vessel_keypoints_batch.append(torch.from_numpy(keypoints).float())
+
+            # 转换回 tensor [B, 1, H, W]
+            vessel_keypoints = torch.stack(vessel_keypoints_batch, dim=0).unsqueeze(1).to(device)
+            
+            
+            # 准备 PKE 训练所需参数
+            batch_size = img0.size(0)
+            input_with_labels = torch.ones(batch_size, dtype=torch.bool).to(device)
+            learn_index = torch.where(input_with_labels)
+            
+            # 加载动态 Value Maps (记录每个像素点的历史置信度)
+            names = data['pair_names'][0] # 使用固定图名称作为 key
+            value_maps = value_map_load(value_map_save_dir, names, input_with_labels, 
+                                      img0.shape[-2:], value_maps_running)
+            value_maps = value_maps.to(device)
+            
+            # 读取真值几何变换矩阵 H_0to1 (image0 -> image1)，用于描述子热身阶段
+            H_0to1 = data.get('T_0to1', None)
+            if H_0to1 is not None:
+                H_0to1 = H_0to1.to(device)
+            
+            optimizer.zero_grad()
+            
+            with torch.set_grad_enabled(True):
+                # 调用模型 forward 方法 - v6 Interface
+                # 传入 vessel_keypoints 作为 GT Anchor
+                # 传入 vessel_mask_full 用于 Mask Constraint
+                loss, number_pts, loss_det_item, loss_desc_item, enhanced_kp, enhanced_label, det_pred, n_det, n_desc = \
+                    model(img0_input, img1, vessel_keypoints, value_maps, learn_index,
+                          phase=phase, vessel_mask=vessel_mask_full, H_0to1=H_0to1,
+                          pke_supervised=pke_supervised) # model.forward v6 will remove vessel_weight
+                    
+                loss.backward()
+                optimizer.step()
+                
+            # 更新持久化的 Value Maps
+            if len(learn_index[0]) > 0:
+                value_maps = value_maps.cpu()
+                value_map_save(value_map_save_dir, names, input_with_labels, value_maps, value_maps_running)
+                    
+            running_loss_det += loss_det_item
+            running_loss_desc += loss_desc_item
+            total_samples += img0.size(0)
+
+        epoch_loss = (running_loss_det + running_loss_desc) / total_samples
+        log_print(f'Train Total Loss: {epoch_loss:.4f} (Det: {running_loss_det/total_samples:.4f}, Desc: {running_loss_desc/total_samples:.4f})')
+        
+        # 每 5 个 Epoch 进行一次验证并保存模型
+        if epoch % 5 == 0:
+            auc_test = validate(model, val_set, device, epoch, save_root, log_file, train_config, reg_type)
+            
+            state = {
+                'net': model.state_dict(),
+                'optimizer': optimizer.state_dict(),
+                'epoch': epoch,
+                'auc_score': auc_test
+            }
+            
+            # 保存最新模型
+            latest_dir = os.path.join(save_root, 'latestpoint')
+            os.makedirs(latest_dir, exist_ok=True)
+            torch.save(state, os.path.join(latest_dir, 'checkpoint.pth'))
+            # 保存epoch信息
+            with open(os.path.join(latest_dir, 'checkpoint_info.txt'), 'w') as f:
+                f.write(f'Latest Checkpoint\nEpoch: {epoch}\nAvg AUC: {auc_test:.4f}\n')
+            
+            # 保存 AUC 表现最好的模型 (越大越好)
+            if auc_test > best_auc:
+                log_print(f"New Best AUC: {auc_test:.4f} (Previous: {best_auc:.4f})")
+                best_auc = auc_test
+                best_dir = os.path.join(save_root, 'bestcheckpoint')
+                os.makedirs(best_dir, exist_ok=True)
+                torch.save(state, os.path.join(best_dir, 'checkpoint.pth'))
+                # 保存epoch信息
+                with open(os.path.join(best_dir, 'checkpoint_info.txt'), 'w') as f:
+                    f.write(f'Best Checkpoint\nEpoch: {epoch}\nAvg AUC: {auc_test:.4f}\n')
+            
+            # 早停机制 (仅在 epoch >= 100 后启用)
+            if epoch >= 100:
+                if auc_test > best_val_score:
+                    best_val_score = auc_test
+                    patience_counter = 0
+                    log_print(f'[Early Stopping] Validation AUC improved to {best_val_score:.4f}. Reset patience counter.')
+                else:
+                    patience_counter += 1
+                    log_print(f'[Early Stopping] Validation AUC did not improve. Patience: {patience_counter}/{patience}')
+                
+                if patience_counter >= patience:
+                    log_print(f'Early stopping triggered at epoch {epoch}. Best validation MACE: {best_val_mace:.2f}')
+                    break
+    
+    # 训练结束，关闭日志文件
+    train_log.close()
+
+if __name__ == '__main__':
+    train_multimodal()
