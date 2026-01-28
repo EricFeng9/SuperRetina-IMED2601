@@ -937,7 +937,7 @@ def train_multimodal():
                     log_print(f'[Early Stopping] Validation AUC did not improve. Patience: {patience_counter}/{patience}')
                 
                 if patience_counter >= patience:
-                    log_print(f'Early stopping triggered at epoch {epoch}. Best validation MACE: {best_val_mace:.2f}')
+                    log_print(f'Early stopping triggered at epoch {epoch}. Best validation AUC: {best_val_score:.4f}')
                     break
     
     # 训练结束，关闭日志文件

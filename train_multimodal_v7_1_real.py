@@ -255,18 +255,31 @@ def validate(model, val_dataset, device, epoch, save_root, train_config, mode):
             res_paper = calculate_metrics(mkpts0_p, mkpts1_p, pts_f_p, pts_m_p, orig_size=orig_size_ref)
             all_metrics.append({**res_paper, 'MACE': mace})
 
-            # 5. SAVING (THE MISSING PART)
+            # 5. SAVING (ENHANCED)
             cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_fix.png'), img_fix_raw)
             cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_moving.png'), img_mov_resized)
             
-            img_fix_kpts = cv2.drawKeypoints(img_fix_raw.copy(), [cv2.KeyPoint(pt[0], pt[1], 10) for pt in kps_f_orig], None, color=(0,255,0))
-            txt = f"Det Max: {det_fix.max():.4f} Pts: {len(kps_f_orig)}"
-            cv2.putText(img_fix_kpts, txt, (10,30), 1, 1, (255,0,0), 2)
+            # --- Enchance Visualization Logic (Aligned with v7_1) ---
+            img_fix_kpts = cv2.drawKeypoints(img_fix_raw.copy(), [cv2.KeyPoint(float(pt[0]), float(pt[1]), 10) for pt in kps_f_orig], None, color=(0,255,0))
+            det_max = det_fix.max().item()
+            det_mean = det_fix.mean().item()
+            txt = f"Det Max: {det_max:.4f} Mean: {det_mean:.4f} Pts: {len(kps_f_orig)}"
+            cv2.putText(img_fix_kpts, txt, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+            if len(kps_f_orig) > 0:
+                min_x, max_x = kps_f_orig[:, 0].min(), kps_f_orig[:, 0].max()
+                min_y, max_y = kps_f_orig[:, 1].min(), kps_f_orig[:, 1].max()
+                t2 = f"X: {min_x:.1f}-{max_x:.1f} Y: {min_y:.1f}-{max_y:.1f}"
+                cv2.putText(img_fix_kpts, t2, (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
             cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_fix_kpts.png'), img_fix_kpts)
             
-            img_mov_kpts = cv2.drawKeypoints(img_mov_resized.copy(), [cv2.KeyPoint(pt[0], pt[1], 10) for pt in kps_m_orig], None, color=(0,255,0))
-            txt_m = f"Max: {det_mov.max():.4f} Pts: {len(kps_m_orig)}"
-            cv2.putText(img_mov_kpts, txt_m, (10,30), 1, 1, (255,0,0), 2)
+            img_mov_kpts = cv2.drawKeypoints(img_mov_resized.copy(), [cv2.KeyPoint(float(pt[0]), float(pt[1]), 10) for pt in kps_m_orig], None, color=(0,255,0))
+            det_m_max = det_mov.max().item()
+            det_m_mean = det_mov.mean().item()
+            valid_area_ratio = valid_mask.mean().item()
+            txt_m = f"Max: {det_m_max:.4f} Mean: {det_m_mean:.4f} Pts: {len(kps_m_orig)}"
+            cv2.putText(img_mov_kpts, txt_m, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+            t2_m = f"Msk Ratio: {valid_area_ratio:.2f}"
+            cv2.putText(img_mov_kpts, t2_m, (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
             cv2.imwrite(os.path.join(sample_save_dir, f'{sample_id}_moving_kpts.png'), img_mov_kpts)
             
             reg_img = cv2.warpPerspective(img_mov_resized, H_est, (w_f, h_f))
@@ -324,9 +337,21 @@ def train_real_v6():
     parser.add_argument('--batch_size', '-b', type=int, default=4)
     parser.add_argument('--content_thresh', type=float, default=None)
     parser.add_argument('--nms_thresh', type=float, default=None)
+    parser.add_argument('--start_point', '-s', type=str, help='Path to checkpoint to resume from', default=None)
     args = parser.parse_args()
     
-    config['MODEL']['name'] = args.name
+    if args.name:
+        config['MODEL']['name'] = args.name
+    
+    # --- Auto-detect experiment name from start_point path ---
+    if args.start_point and args.name == 'v6_real_strict_control':
+        try:
+            detected_name = os.path.basename(os.path.dirname(os.path.dirname(os.path.abspath(args.start_point))))
+            config['MODEL']['name'] = detected_name
+            args.name = detected_name
+            print(f"Auto-detected experiment name from path: {detected_name}")
+        except:
+            pass
     config['DATASET']['registration_type'] = args.mode
     config['MODEL']['shared_encoder'] = False 
     if args.content_thresh: config['MODEL']['content_thresh'] = args.content_thresh
@@ -376,6 +401,22 @@ def train_real_v6():
         {'params': head_params, 'lr': 1e-4}
     ])
     
+    start_epoch = 1
+    # --- Resume Logic Aligned with v7_1 ---
+    if args.start_point and os.path.exists(args.start_point):
+        log_print(f"Resuming from checkpoint: {args.start_point}")
+        checkpoint = torch.load(args.start_point, map_location=device)
+        model.load_state_dict(checkpoint['net'])
+        if 'optimizer' in checkpoint:
+            optimizer.load_state_dict(checkpoint['optimizer'])
+        start_epoch = checkpoint.get('epoch', 0) + 1
+        
+        if 'auc_score' in checkpoint:
+            best_auc = checkpoint['auc_score']
+            best_val_score = best_auc
+            log_print(f"Restored Best AUC: {best_auc:.4f}")
+        log_print(f"Resuming from Epoch {start_epoch}")
+    
     # --- v7: 加载官方预训练权重 (weights/SuperRetina.pth) ---
     if os.path.exists('weights/SuperRetina.pth'):
         log_print(f"Loading official Pretrained weight for Real-Training (Mapping to Dual-Path)")
@@ -409,28 +450,29 @@ def train_real_v6():
     os.makedirs(vmap_dir)
     vmap_running = {}
     
-    phase0_epochs = train_config.get('warmup_epoch', 50)
-    best_auc = -1.0
+    phase0_epochs = 30 # Aligned with v7_1
+    best_auc = best_auc if 'best_auc' in locals() else -1.0
+    best_val_score = best_val_score if 'best_val_score' in locals() else -1.0
     
     # 早停机制变量 (仅在 epoch >= 100 后启用)
-    patience = 5  # 验证指标连续 5 次不提升则早停
+    patience = 5  
     patience_counter = 0
-    best_val_score = -1.0
     
     log_print(f"Starting V6 Strategy on Real Data (Strict Align): {args.name}")
 
     # 初始验证
-    log_print("Running initial validation...")
-    _ = validate(model, base_val, device, 0, save_root, train_config, args.mode)
+    if start_epoch == 1:
+        log_print("Running initial validation...")
+        _ = validate(model, base_val, device, 0, save_root, train_config, args.mode)
+    else:
+        log_print(f"Resuming: Skipping initial validation (Current Epoch: {start_epoch})")
 
-    for epoch in range(1, args.epoch + 1):
+    for epoch in range(start_epoch, args.epoch + 1):
         if epoch <= phase0_epochs:
             phase, model.PKE_learn = 0, False
             phase_msg = f"Phase 0: Modality Adaptation & Space Alignment (Epoch {epoch}/{phase0_epochs})"
             # --- v7 Correction: Freeze Fix Encoder & Heads ---
-            # 仅放开 encoder_mov 进行域适配，保持 Fix 侧特征空间稳定作为 Anchor
-            # --- v7 Correction: Freeze Fix Encoder & Heads ---
-            # 仅放开 encoder_mov 和 Descriptor Head 进行域适配，保持 Fix 侧特征空间稳定作为 Anchor
+            # 允许训练 Detector Head (`dconv_up`, `conv_last`) 以抑制背景误检
             for n, p in model.named_parameters():
                 if 'encoder_mov' in n:
                     p.requires_grad = True
@@ -438,11 +480,13 @@ def train_real_v6():
                     p.requires_grad = False
                 elif any(k in n for k in ['convDa', 'convDb', 'convDc', 'trans_conv']):
                     p.requires_grad = True
+                elif any(k in n for k in ['dconv_up', 'conv_last']):
+                    p.requires_grad = True
                 else:
                     p.requires_grad = False
         else:
             phase, model.PKE_learn = 3, True
-            phase_msg = f"Phase 1+: Hybrid PKE Registration (Epoch {epoch-phase0_epochs}/{args.epoch-phase0_epochs})"
+            phase_msg = f"Phase 1+: Hybrid PKE Registration (Epoch {epoch}/{args.epoch})"
             # --- v7: 全量开放训练 ---
             for p in model.parameters():
                 p.requires_grad = True
