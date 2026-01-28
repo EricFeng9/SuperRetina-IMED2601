@@ -677,8 +677,10 @@ def train_multimodal():
                     p.requires_grad = False # 冻结 Fix Encoder (Anchor)
                 elif any(k in n for k in ['convDa', 'convDb', 'convDc', 'trans_conv']):
                     p.requires_grad = True # 训练 Descriptor Head
+                elif any(k in n for k in ['dconv_up', 'conv_last']):
+                    p.requires_grad = True # 训练 Detector Head (用于 Phase 0 背景抑制)
                 else:
-                    p.requires_grad = False # 冻结 Detector Head & Others
+                    p.requires_grad = False # 其他不需要的参数冻结
         else:
             phase = 3 
             pke_supervised = False 
@@ -769,15 +771,107 @@ def train_multimodal():
             if H_0to1 is not None:
                 H_0to1 = H_0to1.to(device)
             
+            # ===== 可视化: 保存第一个 epoch 的前两个 batch =====
+            if epoch == 1 and step_idx < 2:
+                # 计算可视化所需的背景掩码
+                v_mask = data['vessel_mask0'].to(device)
+                bg_mask_fix = 1.0 - v_mask
+                
+                if phase == 0:
+                    # Phase 0: 图像对齐，几何关系为 Identity
+                    bg_mask_mov = bg_mask_fix
+                else:
+                    # Phase 3: 图像经过仿射变换，需要计算 Warp 后的背景掩码
+                    # replicate grid generation logic for visualization
+                    B, _, H, W = v_mask.shape
+                    try:
+                        H_mtx = H_0to1.detach().cpu()
+                        H_inv_cpu = torch.linalg.inv(H_mtx)
+                        H_inv = H_inv_cpu.to(device)
+                        
+                        ys, xs = torch.meshgrid(torch.arange(H, device=device), torch.arange(W, device=device), indexing='ij')
+                        pts = torch.stack([xs.float(), ys.float(), torch.ones_like(xs, dtype=torch.float32)], dim=-1).view(-1, 3)
+                        
+                        grid_list = []
+                        for b in range(B):
+                            pts_fix = pts @ H_inv[b].t()
+                            u = (2.0 * (pts_fix[:, 0] / (pts_fix[:, 2] + 1e-6)) / (W - 1)) - 1.0
+                            v = (2.0 * (pts_fix[:, 1] / (pts_fix[:, 2] + 1e-6)) / (H - 1)) - 1.0
+                            grid_list.append(torch.stack([u, v], dim=-1).view(H, W, 2))
+                        grid_m2f = torch.stack(grid_list, dim=0)
+                        
+                        vessel_mov = F.grid_sample(v_mask, grid_m2f, mode='nearest', align_corners=True)
+                        bg_mask_mov = 1.0 - vessel_mov
+                    except:
+                        bg_mask_mov = torch.zeros_like(bg_mask_fix)
+
+                save_batch_visualization(
+                    img0_orig, img1_orig, img0_input, img1,
+                    save_root, epoch, step_idx + 1, batch_size,
+                    vessel_mask=data['vessel_mask0'].to(device),
+                    bg_mask_fix=bg_mask_fix,
+                    bg_mask_mov=bg_mask_mov
+                )
+
+            # ===== 关键修改：从完整血管分割图中提取稀疏的分叉点 =====
+            # 这些分叉点将作为训练时的监督信号，引导模型学习独特的关键点
+            vessel_mask_full = data['vessel_mask0'].to(device)  # [B, 1, H, W]
+            vessel_keypoints_batch = []
+            
+            for b in range(vessel_mask_full.shape[0]):
+                # 转换为 numpy 格式 (H, W) - 修复数值溢出问题
+                mask_tensor = vessel_mask_full[b, 0].cpu()
+                if mask_tensor.max() <= 1.0:
+                    mask_np = (mask_tensor.numpy() * 255).astype(np.uint8)
+                else:
+                    mask_np = mask_tensor.numpy().astype(np.uint8)
+                
+                # 提取关键点
+                try:
+                    keypoints = extract_vessel_keypoints(mask_np, min_distance=8)
+                except:
+                    try:
+                        keypoints = extract_vessel_keypoints_fallback(mask_np, min_distance=8)
+                    except:
+                        # 如果提取失败，使用原始掩码
+                        keypoints = (mask_np > 127).astype(np.float32)
+                        print("点位提取失败")
+                
+                # 调试: 检查点位数量
+                # if epoch == 1 and step_idx < 5:
+                #     print(f"Sample {b}: Found {np.sum(keypoints)} vessel keypoints")
+                    
+                vessel_keypoints_batch.append(torch.from_numpy(keypoints).float())
+
+            # 转换回 tensor [B, 1, H, W]
+            vessel_keypoints = torch.stack(vessel_keypoints_batch, dim=0).unsqueeze(1).to(device)
+            
+            
+            # 准备 PKE 训练所需参数
+            batch_size = img0.size(0)
+            input_with_labels = torch.ones(batch_size, dtype=torch.bool).to(device)
+            learn_index = torch.where(input_with_labels)
+            
+            # 加载动态 Value Maps (记录每个像素点的历史置信度)
+            names = data['pair_names'][0] # 使用固定图名称作为 key
+            value_maps = value_map_load(value_map_save_dir, names, input_with_labels, 
+                                      img0.shape[-2:], value_maps_running)
+            value_maps = value_maps.to(device)
+            
             optimizer.zero_grad()
             
             with torch.set_grad_enabled(True):
+                # 修复 Phase 0 传入 H 矩阵导致的 Bug
+                # Phase 0: 输入图像对齐 (Identity)，传入 H=None 确保 Mask 也是 Identity，只抑制真背景
+                # Phase 3: 输入图像扭曲 (Affine)，传入 H=H_0to1 确保 Mask 跟随图像扭曲
+                H_input = None if phase == 0 else H_0to1
+                
                 # 调用模型 forward 方法 - v6 Interface
                 # 传入 vessel_keypoints 作为 GT Anchor
                 # 传入 vessel_mask_full 用于 Mask Constraint
                 loss, number_pts, loss_det_item, loss_desc_item, enhanced_kp, enhanced_label, det_pred, n_det, n_desc = \
                     model(img0_input, img1, vessel_keypoints, value_maps, learn_index,
-                          phase=phase, vessel_mask=vessel_mask_full, H_0to1=H_0to1,
+                          phase=phase, vessel_mask=vessel_mask_full, H_0to1=H_input,
                           pke_supervised=pke_supervised) # model.forward v6 will remove vessel_weight
                     
                 loss.backward()

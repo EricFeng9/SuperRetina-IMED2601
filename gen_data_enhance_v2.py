@@ -244,7 +244,8 @@ def apply_domain_randomization(img_tensor, gamma_range=(0.7, 1.5),
 
 
 def save_batch_visualization(img0_orig, img1_orig, img0_aug, img1_aug, 
-                              save_dir, epoch, step, batch_size, vessel_mask=None):
+                              save_dir, epoch, step, batch_size, vessel_mask=None,
+                              bg_mask_fix=None, bg_mask_mov=None):
     """
     保存一个 batch 的可视化结果,用于检查域随机化效果
     
@@ -258,6 +259,8 @@ def save_batch_visualization(img0_orig, img1_orig, img0_aug, img1_aug,
         step: 当前 step (batch index)
         batch_size: batch 大小
         vessel_mask: 可选，血管掩码 [B, 1, H, W]
+        bg_mask_fix: 可选，Fix 背景掩码 [B, 1, H, W]
+        bg_mask_mov: 可选，Moving 背景掩码 [B, 1, H, W]
     """
     import os
     
@@ -282,6 +285,14 @@ def save_batch_visualization(img0_orig, img1_orig, img0_aug, img1_aug,
         if vessel_mask is not None:
             vessel = (vessel_mask[b, 0].cpu().numpy() * 255).astype(np.uint8)
             cv2.imwrite(os.path.join(sample_dir, 'vessel_mask.png'), vessel)
+
+        if bg_mask_fix is not None:
+            bg_f = (bg_mask_fix[b, 0].cpu().numpy() * 255).astype(np.uint8)
+            cv2.imwrite(os.path.join(sample_dir, 'bg_mask_fix.png'), bg_f)
+            
+        if bg_mask_mov is not None:
+            bg_m = (bg_mask_mov[b, 0].cpu().numpy() * 255).astype(np.uint8)
+            cv2.imwrite(os.path.join(sample_dir, 'bg_mask_mov.png'), bg_m)
         
         # 创建对比图: 左边原始,右边增强
         comparison_fix = np.hstack([fix_orig, fix_aug])

@@ -361,10 +361,40 @@ class SuperRetinaMultimodal(nn.Module):
         # ==========================================
         # v6.2 Phase 0: Modality Alignment Warmup
         # ==========================================
+        # ==========================================
+        # v6.2 Phase 0: Modality Alignment Warmup
+        # ==========================================
         if phase == 0:
             # 执行对齐热身：让 Moving 模仿 Fix
             loss_descriptor = self.dense_alignment_loss(descriptor_pred_fix, descriptor_pred_mov, vessel_mask)
-            loss_detector = torch.tensor(0.0, device=fix_img.device, requires_grad=True)
+            
+            # --- 1. Positive Supervision (正向激励): 教模型在哪里"张嘴" ---
+            # 利用输入的 vessel_keypoints (label_point_positions) 生成高斯热力图 GT
+            # 卷积生成软标签
+            gt_heatmap = F.conv2d(label_point_positions, self.kernel, stride=1, padding=(self.kernel.shape[-1] - 1) // 2)
+            gt_heatmap[gt_heatmap > 1] = 1 # 截断
+            
+            # 计算 Dice Loss: 强迫 Fix 和 Moving 分支都在血管分叉点激活
+            # 注意: Phase 0 输入是空间对齐的 (img1_origin), 所以两个分支共用一个 GT
+            loss_pos_fix = self.dice(detector_pred_fix, gt_heatmap)
+            loss_pos_mov = self.dice(detector_pred_mov, gt_heatmap)
+            loss_positive = loss_pos_fix + loss_pos_mov
+            
+            # --- 2. Negative Suppression (负向抑制): 教模型在哪里"闭嘴" ---
+            loss_suppress = torch.tensor(0., device=fix_img.device)
+            if vessel_mask is not None:
+                bg_mask_fix = 1.0 - vessel_mask
+                suppress_fix = (detector_pred_fix * bg_mask_fix).mean()
+                
+                # 修复后的对称抑制逻辑
+                vessel_mask_mov = F.grid_sample(vessel_mask, grid_mov_to_fix, mode='nearest', align_corners=True) if grid_mov_to_fix is not None else torch.zeros_like(vessel_mask)
+                bg_mask_mov = 1.0 - vessel_mask_mov
+                
+                suppress_mov = (detector_pred_mov * bg_mask_mov).mean()
+                loss_suppress = (suppress_fix + suppress_mov) * 2.0 # 强力压制
+            
+            # --- Total Detector Loss ---
+            loss_detector = loss_positive + loss_suppress
             
             return loss_detector + loss_descriptor, 0, loss_detector.detach().sum(), \
                    loss_descriptor.detach().sum(), None, \
@@ -472,7 +502,7 @@ class SuperRetinaMultimodal(nn.Module):
                 suppress_mov = (detector_pred_mov * bg_mask_mov).mean()
                 
                 # 汇总抑制损失 (降低权重至 0.2 以防坍缩)
-                loss_suppress = (suppress_fix + suppress_mov) * 0.2
+                loss_suppress = (suppress_fix + suppress_mov) * 2.0
                 
             loss_detector = loss_detector + loss_suppress
 

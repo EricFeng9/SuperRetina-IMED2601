@@ -456,13 +456,47 @@ def train_real_v6():
             img0, img1 = apply_domain_randomization(img0_orig), apply_domain_randomization(img1_orig)
             
             if epoch == 1 and step_idx < 2:
-                save_batch_visualization(img0_orig, img1_orig, img0, img1, save_root, epoch, step_idx+1, args.batch_size)
+                # 计算可视化所需的背景掩码 (同步逻辑)
+                v_mask = data['vessel_mask0'].to(device)
+                bg_mask_fix = 1.0 - v_mask
+                
+                if phase == 0:
+                    bg_mask_mov = bg_mask_fix
+                else:
+                    B, _, H, W = v_mask.shape
+                    try:
+                        H_mtx = H_0to1.detach().cpu()
+                        H_inv_cpu = torch.linalg.inv(H_mtx)
+                        H_inv = H_inv_cpu.to(device)
+                        
+                        ys, xs = torch.meshgrid(torch.arange(H, device=device), torch.arange(W, device=device), indexing='ij')
+                        pts = torch.stack([xs.float(), ys.float(), torch.ones_like(xs, dtype=torch.float32)], dim=-1).view(-1, 3)
+                        
+                        grid_list = []
+                        for b in range(B):
+                            pts_fix = pts @ H_inv[b].t()
+                            u = (2.0 * (pts_fix[:, 0] / (pts_fix[:, 2] + 1e-6)) / (W - 1)) - 1.0
+                            v = (2.0 * (pts_fix[:, 1] / (pts_fix[:, 2] + 1e-6)) / (H - 1)) - 1.0
+                            grid_list.append(torch.stack([u, v], dim=-1).view(H, W, 2))
+                        grid_m2f = torch.stack(grid_list, dim=0)
+                        
+                        vessel_mov = F.grid_sample(v_mask, grid_m2f, mode='nearest', align_corners=True)
+                        bg_mask_mov = 1.0 - vessel_mov
+                    except:
+                        bg_mask_mov = torch.zeros_like(bg_mask_fix)
+
+                save_batch_visualization(img0_orig, img1_orig, img0, img1, save_root, epoch, step_idx+1, args.batch_size, 
+                                       vessel_mask=v_mask, bg_mask_fix=bg_mask_fix, bg_mask_mov=bg_mask_mov)
             
             seeds = data['vessel_mask0'].to(device); H_0to1 = data['T_0to1'].to(device); names = data['pair_names'][0]
             v_maps = value_map_load(vmap_dir, names, torch.ones(img0.size(0), dtype=torch.bool), img0.shape[-2:], vmap_running).to(device)
             
             optimizer.zero_grad()
-            loss, _, l_det, l_desc, _, _, _, _, _ = model(img0, img1, seeds, v_maps, (torch.arange(img0.size(0)),), phase=phase, vessel_mask=None, H_0to1=H_0to1)
+            
+            # Phase 0 Fix: Pass H_0to1=None to avoid wrong mask warping
+            H_input = None if phase == 0 else H_0to1
+            
+            loss, _, l_det, l_desc, _, _, _, _, _ = model(img0, img1, seeds, v_maps, (torch.arange(img0.size(0)),), phase=phase, vessel_mask=None, H_0to1=H_input)
             loss.backward(); optimizer.step()
             value_map_save(vmap_dir, names, torch.ones(img0.size(0), dtype=torch.bool), v_maps.cpu(), vmap_running)
             
