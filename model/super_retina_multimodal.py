@@ -457,13 +457,18 @@ class SuperRetinaMultimodal(nn.Module):
             # --- Symmetric Mask Constraint (双边对称背景抑制) ---
             loss_suppress = torch.tensor(0., device=fix_img.device)
             if vessel_mask is not None:
-                bg_mask_fix = 1.0 - vessel_mask
                 # 1. 约束 Fix 支路
+                bg_mask_fix = 1.0 - vessel_mask
                 suppress_fix = (detector_pred_fix * bg_mask_fix).mean()
                 
-                # 2. 约束 Moving 支路 (将背景 Mask Warp 过去)
-                # 使用 grid_mov_to_fix: 遍历 Mov 像素，去 Fix Mask 里找对应值
-                bg_mask_mov = F.grid_sample(bg_mask_fix, grid_mov_to_fix, mode='nearest', align_corners=True)
+                # 2. 约束 Moving 支路 (修复 Loophole)
+                # 错误逻辑: 直接 Warp 背景 Mask，会导致 padding 的 0 被视为非背景
+                # 正确逻辑: 先 Warp 血管 Mask (1=血管, padding=0=非血管)
+                # 这样 Warp 后的 0 既包含了原背景，也包含了 padding 区域
+                # 再取反，即可得到完整的背景约束 Mask (包括黑边)
+                vessel_mask_mov = F.grid_sample(vessel_mask, grid_mov_to_fix, mode='nearest', align_corners=True)
+                bg_mask_mov = 1.0 - vessel_mask_mov
+                
                 suppress_mov = (detector_pred_mov * bg_mask_mov).mean()
                 
                 # 汇总抑制损失 (降低权重至 0.2 以防坍缩)
