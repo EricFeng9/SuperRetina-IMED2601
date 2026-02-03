@@ -26,7 +26,7 @@ import random
 sys.path.append(os.getcwd())
 
 # 使用新数据集脚本
-from dataset.FIVES_extract_v2.FIVES_extract_v2 import MultiModalDataset
+from dataset.FIVES_extract_v3.FIVES_extract_v3 import MultiModalDataset
 from dataset.CF_OCTA_v2_repaired.cf_octa_v2_repaired_dataset import CFOCTADataset
 from dataset.operation_pre_filtered_cffa.operation_pre_filtered_cffa_dataset import CFFADataset
 from dataset.operation_pre_filtered_cfoct.operation_pre_filtered_cfoct_dataset import CFOCTDataset
