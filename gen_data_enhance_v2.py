@@ -299,3 +299,29 @@ def save_batch_visualization(img0_orig, img1_orig, img0_aug, img1_aug,
         comparison_mov = np.hstack([mov_orig, mov_aug])
         cv2.imwrite(os.path.join(sample_dir, 'comparison_fix_orig_vs_aug.png'), comparison_fix)
         cv2.imwrite(os.path.join(sample_dir, 'comparison_moving_orig_vs_aug.png'), comparison_mov)
+
+def apply_domain_randomization_numpy(img_np, **kwargs):
+    """
+    对 numpy 图像应用域随机化增强 (Wrapper for NumPy input)
+    
+    Args:
+        img_np: [H, W] float32 numpy array, range [0, 1]
+    Returns:
+        augmented_np: [H, W] float32 numpy array
+    """
+    # 确保输入是 float32
+    if img_np.dtype != np.float32:
+        img_np = img_np.astype(np.float32)
+        
+    # Convert to tensor [1, 1, H, W]
+    tensor = torch.from_numpy(img_np).unsqueeze(0).unsqueeze(0)
+    
+    # Apply augmentation (Reuse the tensor implementation)
+    # The tensor implementation handles device automatically (CPU in this case)
+    augmented_tensor = apply_domain_randomization(tensor, **kwargs)
+    
+    # Convert back to numpy [H, W]
+    augmented_np = augmented_tensor.squeeze().numpy()
+    
+    return augmented_np
+
