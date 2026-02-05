@@ -107,12 +107,12 @@ class SuperRetinaEncoder(nn.Module):
 class SuperRetinaMultimodal(nn.Module):
     """
     SuperRetina 多模态配准网络
-    支持 Shared Encoder (Siamese) 和 Dual-Path Encoder (Pseudo-Siamese)
+    v8 版本：CF-Anchor 双路多模态对齐架构 (无 PKE)
     """
     def __init__(self, config=None, device='cpu', n_class=1):
         super().__init__()
 
-        self.PKE_learn = True
+        self.PKE_learn = False # v8 取消 PKE
         self.relu = torch.nn.ReLU(inplace=True)
         c1, c2, c3, c4, c5, d1, d2 = 64, 64, 128, 128, 256, 256, 256
         
@@ -341,185 +341,94 @@ class SuperRetinaMultimodal(nn.Module):
             
         return total_loss / B
     
-    def forward(self, fix_img, mov_img, label_point_positions=None, value_map=None, learn_index=None,
-                phase=3, vessel_mask=None, H_0to1=None, pke_supervised=False):
+    def construct_grid_from_H(self, H_mat, H, W):
         """
-        v6.2 主前向传播逻辑: 对齐热身 (Phase 0) + 对称约束 PKE (Phase 1+)
+        根据单应矩阵/仿射矩阵构建 grid_sample 所需的 grid
+        H_mat: [B, 3, 3]  (Fix -> Mov, x' = Hx)
+        Return: [B, H, W, 2] in [-1, 1] range
         """
-        # 1. 提取特征
-        detector_pred_fix, descriptor_pred_fix = self.network(fix_img, mode='fix')
-        detector_pred_mov, descriptor_pred_mov = self.network(mov_img, mode='mov')
+        B = H_mat.shape[0]
+        device = H_mat.device
         
-        # 推断模式
-        if label_point_positions is None:
-             return detector_pred_fix, descriptor_pred_fix
-
-        B, _, H, W = detector_pred_fix.shape
-        enhanced_label_pts = None
-        enhanced_label = None
-
-        # ==========================================
-        # v6.2 Phase 0: Modality Alignment Warmup
-        # ==========================================
-        # ==========================================
-        # v6.2 Phase 0: Modality Alignment Warmup
-        # ==========================================
-        if phase == 0:
-            # 执行对齐热身：让 Moving 模仿 Fix
-            loss_descriptor = self.dense_alignment_loss(descriptor_pred_fix, descriptor_pred_mov, vessel_mask)
+        # 生成归一化坐标网格
+        ys, xs = torch.meshgrid(torch.arange(H, device=device), torch.arange(W, device=device), indexing='ij')
+        # [H, W, 3] Homogeneous coords
+        pts = torch.stack([xs.float(), ys.float(), torch.ones_like(xs, dtype=torch.float32)], dim=-1).view(-1, 3)
+        
+        grid_list = []
+        for b in range(B):
+            # Fix -> Mov 变换: pts_mov = H @ pts_fix^T
+            # [3, 3] @ [3, N] -> [3, N] -> [N, 3]
+            pts_mov = (H_mat[b] @ pts.t()).t()
             
-            # --- 1. Positive Supervision (正向激励): 教模型在哪里"张嘴" ---
-            # 利用输入的 vessel_keypoints (label_point_positions) 生成高斯热力图 GT
-            # 卷积生成软标签
-            gt_heatmap = F.conv2d(label_point_positions, self.kernel, stride=1, padding=(self.kernel.shape[-1] - 1) // 2)
-            gt_heatmap[gt_heatmap > 1] = 1 # 截断
+            # 归一化到 [-1, 1]
+            # u = 2 * x / (W-1) - 1
+            # v = 2 * y / (H-1) - 1
+            # 注意处理透视除法 (虽然仿射通常是 1)
+            z = pts_mov[:, 2:3] + 1e-6
+            u = (2.0 * (pts_mov[:, 0:1] / z) / (W - 1)) - 1.0
+            v = (2.0 * (pts_mov[:, 1:2] / z) / (H - 1)) - 1.0
             
-            # 计算 Dice Loss: 强迫 Fix 和 Moving 分支都在血管分叉点激活
-            # 注意: Phase 0 输入是空间对齐的 (img1_origin), 所以两个分支共用一个 GT
-            loss_pos_fix = self.dice(detector_pred_fix, gt_heatmap)
-            loss_pos_mov = self.dice(detector_pred_mov, gt_heatmap)
-            loss_positive = loss_pos_fix + loss_pos_mov
+            grid_list.append(torch.cat([u, v], dim=-1).view(H, W, 2))
             
-            # --- 2. Negative Suppression (负向抑制): 教模型在哪里"闭嘴" ---
-            loss_suppress = torch.tensor(0., device=fix_img.device)
-            if vessel_mask is not None:
-                bg_mask_fix = 1.0 - vessel_mask
-                suppress_fix = (detector_pred_fix * bg_mask_fix).mean()
-                
-                # 修复后的对称抑制逻辑
-                # Phase 0: 图像空间对齐 (Identity)，直接复用 vessel_mask
-                vessel_mask_mov = vessel_mask
-                bg_mask_mov = 1.0 - vessel_mask_mov
-                
-                suppress_mov = (detector_pred_mov * bg_mask_mov).mean()
-                loss_suppress = (suppress_fix + suppress_mov) * 2.0 # 强力压制
-            
-            # --- Total Detector Loss ---
-            loss_detector = loss_positive + loss_suppress
-            
-            return loss_detector + loss_descriptor, 0, loss_detector.detach().sum(), \
-                   loss_descriptor.detach().sum(), None, \
-                   None, detector_pred_fix, 0, B
+        return torch.stack(grid_list, dim=0)
 
-        # ==========================================
-        # v6.2 Phase 3: Hybrid PKE + Symmetric Mask
-        # ==========================================
-        if phase == 3:
-            # 准备 Grid: 
-            # 1. grid_fix_to_mov: Fix 图坐标 -> Mov 图坐标 (用于 PKE，把 Mov 特征与 Fix 关键点对其)
-            # 2. grid_mov_to_fix: Mov 图坐标 -> Fix 图坐标 (用于 Mask Warping，把 Fix Mask 变换到 Mov 视角)
+    def forward_v8(self, fix_img, mov_img, H_0to1, vessel_mask_fix, lambda_desc=1.0, lambda_det=0.5):
+        """
+        SuperRetina v8 前向传播：CF 锚点密集对齐 + 检测器蒸馏 (无 PKE)
+        
+        参数:
+            fix_img: [B, 1, H, W] CF 图像 (作为锚点分支)
+            mov_img: [B, 1, H, W] FA/OCT 图像 (做为运动分支/训练分支)
+            H_0to1: [B, 3, 3] 真值变换矩阵 (Fix -> Mov)
+            vessel_mask_fix: [B, 1, H, W] CF 上的血管掩膜 (用于限制对齐区域)
+            lambda_desc: 描述子损失权重
+            lambda_det: 检测器蒸馏损失权重
+        """
+        # 1. 基础网络前向传播
+        # CF 图像始终走 encoder_fix (冻结状态)，FA/OCT 图像走 encoder_mov (训练状态)
+        det_fix, desc_fix = self.network(fix_img, mode='fix')
+        det_mov, desc_mov = self.network(mov_img, mode='mov')
+        
+        B, C, H_feat, W_feat = desc_fix.shape
+        _, _, H_img, W_img = fix_img.shape
+        
+        # 2. 构建空间变换网格 (Fix -> Mov)
+        # 用于将 Moving 端的特征图和检测图采样回 CF 坐标系，实现像素级的空间对齐
+        grid_feat = self.construct_grid_from_H(H_0to1, H_feat, W_feat) # 特征图尺度
+        grid_img = self.construct_grid_from_H(H_0to1, H_img, W_img)    # 原始图像尺度
+        
+        # 3. 描述子稠密对齐损失 (L_desc)
+        # 将 Moving 特征场 warp 回 CF 坐标系
+        desc_mov_warped = F.grid_sample(desc_mov, grid_feat, mode='bilinear', align_corners=True)
+        
+        # 血管区域掩膜处理：将血管掩膜下采样到特征图尺度
+        if vessel_mask_fix is not None:
+            mask_feat = F.interpolate(vessel_mask_fix, size=(H_feat, W_feat), mode='nearest')
+            # 阈值化，确定有效的血管区域
+            mask_valid = (mask_feat > 0.5).float()
+        else:
+            # 如果没有血管掩膜，则在全图进行对齐
+            mask_valid = torch.ones_like(desc_fix[:, 0:1, :, :])
             
-            grid_fix_to_mov = None
-            grid_mov_to_fix = None
-            
-            if H_0to1 is not None:
-                if H_0to1.dim() == 2: H_0to1 = H_0to1.unsqueeze(0)
-                
-                # --- 构建 grid_fix_to_mov (原 grid_inverse) ---
-                # 遍历 Fix 的像素 (u,v)，计算其在 Mov 中的位置
-                grid_list_f2m = []
-                ys, xs = torch.meshgrid(torch.arange(H, device=fix_img.device), torch.arange(W, device=fix_img.device), indexing='ij')
-                # [H, W, 3] Homogeneous coords
-                pts = torch.stack([xs.float(), ys.float(), torch.ones_like(xs, dtype=torch.float32)], dim=-1).view(-1, 3)
-                
-                for b in range(B):
-                    # Fix -> Mov 变换
-                    pts_mov = pts @ H_0to1[b].t()
-                    # Normalize to [-1, 1] for grid_sample
-                    u = (2.0 * (pts_mov[:, 0] / (pts_mov[:, 2] + 1e-6)) / (W - 1)) - 1.0
-                    v = (2.0 * (pts_mov[:, 1] / (pts_mov[:, 2] + 1e-6)) / (H - 1)) - 1.0
-                    grid_list_f2m.append(torch.stack([u, v], dim=-1).view(H, W, 2))
-                grid_fix_to_mov = torch.stack(grid_list_f2m, dim=0)
+        # 计算特征间的 MSE 损失 (L2 距离)
+        # 目标：让 encoder_mov 在血管区域学到与 encoder_fix 相同的结构特征分布
+        diff = desc_fix - desc_mov_warped
+        loss_desc_map = (diff ** 2).sum(dim=1, keepdim=True) # [B, 1, H_feat, W_feat]
+        
+        # 加权平均：只在有效血管区域计算损失
+        loss_desc = (loss_desc_map * mask_valid).sum() / (mask_valid.sum() + 1e-6)
+        
+        # 4. 检测器蒸馏损失 (L_det)
+        # 将 Moving 端预测的检测图 warp 回 CF 坐标系
+        det_mov_warped = F.grid_sample(det_mov, grid_img, mode='bilinear', align_corners=True)
+        
+        # 蒸馏目标：Moving 端在 warp 后应与 CF 端产生的检测图相似
+        # det_fix 视为软标签 (detach 掉以防止其参数被更新)，使用 Dice Loss 进行约束
+        loss_det = self.dice(det_mov_warped, det_fix.detach())
+        
+        # 5. 总损失计算
+        loss_total = lambda_desc * loss_desc + lambda_det * loss_det
+        
+        return loss_total, loss_desc, loss_det, det_fix, det_mov_warped
 
-                # --- 构建 grid_mov_to_fix (新增，用于 Mask Warping) ---
-                # 遍历 Mov 的像素 (u,v)，计算其在 Fix 中的位置 (需要逆变换)
-                grid_list_m2f = []
-                # Mov 图像尺寸也是 H, W
-                # 计算逆矩阵 H_1to0
-                # 计算逆矩阵 H_1to0
-                try:
-                    # FIX: Move to CPU for inversion to avoid "magma_queue_create_from_cuda_internal" assertion failure
-                    # This is a known issue with torch.linalg.inv on GPU for some matrix conditions
-                    H_0to1_cpu = H_0to1.detach().cpu()
-                    H_1to0_cpu = torch.linalg.inv(H_0to1_cpu)
-                    H_1to0 = H_1to0_cpu.to(fix_img.device)
-                except:
-                    # 兜底：如果不可逆，使用单位阵
-                    H_1to0 = torch.eye(3, device=fix_img.device).unsqueeze(0).repeat(B, 1, 1)
-
-                for b in range(B):
-                    # Mov -> Fix 变换
-                    pts_fix = pts @ H_1to0[b].t()
-                    # Normalize to [-1, 1]
-                    u = (2.0 * (pts_fix[:, 0] / (pts_fix[:, 2] + 1e-6)) / (W - 1)) - 1.0
-                    v = (2.0 * (pts_fix[:, 1] / (pts_fix[:, 2] + 1e-6)) / (H - 1)) - 1.0
-                    grid_list_m2f.append(torch.stack([u, v], dim=-1).view(H, W, 2))
-                grid_mov_to_fix = torch.stack(grid_list_m2f, dim=0)
-                
-            else:
-                grid_fix_to_mov = torch.zeros(B, H, W, 2).to(fix_img.device)
-                grid_mov_to_fix = torch.zeros(B, H, W, 2).to(fix_img.device)
-
-            value_map_update = None
-            
-            # --- PKE 核心过程 ---
-            # 引入 .clone() 彻底隔离 PKE 内部可能的原地修改，保护计算图
-            if len(learn_index[0]) != 0:
-                loss_detector, number_pts, value_map_update, enhanced_label_pts, enhanced_label = \
-                    pke_learn(detector_pred_fix[learn_index].clone(), 
-                              descriptor_pred_fix[learn_index].clone(),
-                              grid_fix_to_mov[learn_index], 
-                              detector_pred_mov[learn_index].clone(),
-                              descriptor_pred_mov[learn_index].clone(), 
-                              self.kernel, self.dice,
-                              label_point_positions[learn_index], value_map[learn_index],
-                              self.config, PKE_learn=True, vessel_mask=vessel_mask[learn_index] if vessel_mask is not None else None)
-            
-            # 更新 Value Map
-            if value_map is not None and value_map_update is not None:
-                value_map[learn_index] = value_map_update.to(value_map.dtype)
-
-            # --- 描述子损失 (回归回归 Triplet) ---
-            loss_descriptor, _ = self.descriptor_loss(
-                detector_pred_fix.clone(), label_point_positions, descriptor_pred_fix,
-                descriptor_pred_mov, grid_fix_to_mov, detector_pred_mov.clone()
-            )
-
-            # --- Symmetric Mask Constraint (双边对称背景抑制) ---
-            loss_suppress = torch.tensor(0., device=fix_img.device)
-            if vessel_mask is not None:
-                # 1. 约束 Fix 支路
-                bg_mask_fix = 1.0 - vessel_mask
-                suppress_fix = (detector_pred_fix * bg_mask_fix).mean()
-                
-                # 2. 约束 Moving 支路 (修复 Loophole)
-                # 错误逻辑: 直接 Warp 背景 Mask，会导致 padding 的 0 被视为非背景
-                # 正确逻辑: 先 Warp 血管 Mask (1=血管, padding=0=非血管)
-                # 这样 Warp 后的 0 既包含了原背景，也包含了 padding 区域
-                # 再取反，即可得到完整的背景约束 Mask (包括黑边)
-                vessel_mask_mov = F.grid_sample(vessel_mask, grid_mov_to_fix, mode='nearest', align_corners=True)
-                bg_mask_mov = 1.0 - vessel_mask_mov
-                
-                suppress_mov = (detector_pred_mov * bg_mask_mov).mean()
-                
-                # 汇总抑制损失 (降低权重至 0.2 以防坍缩)
-                loss_suppress = (suppress_fix + suppress_mov) * 2.0
-                
-            loss_detector = loss_detector + loss_suppress
-
-            # --- Explicit Supervision for Moving Branch (v6.2 Fix) ---
-            # 解决 Moving 分支因缺乏直接监督而导致的坍缩问题
-            if enhanced_label is not None:
-                # enhanced_label 是 Fix 空间的 PKE 增强标签
-                # 使用 grid_mov_to_fix (Mov -> Fix) 将其采样到 Moving 空间
-                label_mov_target = F.grid_sample(enhanced_label, grid_mov_to_fix[learn_index], mode='nearest', align_corners=True)
-                
-                # 对 Moving 预测图通过 Dice Loss 进行强监督
-                loss_det_mov = self.dice(detector_pred_mov[learn_index], label_mov_target)
-                loss_detector = loss_detector + loss_det_mov
-            
-            return loss_detector + loss_descriptor, 0, loss_detector.detach().sum(), \
-                   loss_descriptor.detach().sum(), enhanced_label_pts, \
-                   enhanced_label, detector_pred_fix, len(learn_index[0]), B
-
-        return torch.tensor(0.), 0, 0, 0, None, None, None, 0, 0

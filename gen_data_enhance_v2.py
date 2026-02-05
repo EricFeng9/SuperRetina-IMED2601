@@ -153,7 +153,7 @@ def apply_signal_dropout(img, num_regions_range=(1, 3), region_size_range=(0.1, 
         w_radius = int(W * w_ratio) // 2
         
         #更加自然的形状：生成一个高斯衰减的掩码，而不是硬裁剪
-        y_grid, x_grid = torch.meshgrid(torch.arange(H, device=img.device), torch.arange(W, device=img.device))
+        y_grid, x_grid = torch.meshgrid(torch.arange(H, device=img.device), torch.arange(W, device=img.device), indexing='ij')
         
         # 计算到中心的归一化距离
         dist_sq = ((x_grid - cx) / (w_radius + 1e-6)) ** 2 + ((y_grid - cy) / (h_radius + 1e-6)) ** 2
